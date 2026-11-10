@@ -750,18 +750,18 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
 
           {formError && <p className="text-xs font-medium text-error">{formError}</p>}
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setCreateOpen(false)}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-surface-container text-on-surface text-sm font-medium"
+              className="min-h-[44px] w-full sm:w-auto px-4 py-2 rounded-xl bg-surface-container text-on-surface text-sm font-medium"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => void handleSubmitForm()}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:bg-primary-container"
+              className="min-h-[44px] w-full sm:w-auto px-5 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:bg-primary-container"
             >
               Publish
             </button>

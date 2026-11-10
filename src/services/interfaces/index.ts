@@ -127,6 +127,7 @@ export interface CreateEventInput {
   dateStr: string;
   startTime: string;
   endTime: string;
+  driveMediaId?: string;
 }
 
 export interface CreateEventTaskInput {

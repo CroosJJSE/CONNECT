@@ -17,12 +17,14 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
-import type { CommunityEvent, RsvpStatus } from '../domain/models';
+import type { CommunityEvent, DriveMediaMetadata, RsvpStatus } from '../domain/models';
 import { formatRelativeTime } from '../domain/logic/formatting';
 import { validateEventInput } from '../domain/validation/validators';
 import { useAuth } from '../hooks/useAuth';
 import { useConnectData } from '../hooks/useConnectData';
 import { Avatar } from '../components/common/Avatar';
+import { DriveMediaCard } from '../components/common/DriveMediaCard';
+import { DriveUploadField } from '../components/common/DriveUploadField';
 import { MentionInput } from '../components/common/MentionComposer';
 import { MentionText } from '../components/common/MentionText';
 import { ModalSheet } from '../components/common/ModalSheet';
@@ -33,6 +35,7 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
     communities,
     directoryMembers,
     events,
+    driveMedia,
     createEvent,
     setRsvp,
     inviteToEvent,
@@ -57,6 +60,7 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
   const [dateStr, setDateStr] = useState('2026-11-22');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');
+  const [eventDriveMedia, setEventDriveMedia] = useState<DriveMediaMetadata | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Task & Discussion Drafts
@@ -127,10 +131,12 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
       dateStr,
       startTime,
       endTime,
+      driveMediaId: eventDriveMedia?.id,
     });
     setTitle('');
     setDescription('');
     setLocation('');
+    setEventDriveMedia(null);
     setProposeOpen(false);
   };
 
@@ -187,6 +193,9 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
             const goingCount = Object.values(evt.rsvps).filter((v) => v === 'going').length;
             const isExpanded = Boolean(expandedEvents[evt.id]);
             const bannerBroken = brokenBanners[evt.id];
+            const linkedDriveMedia = evt.driveMediaId
+              ? driveMedia.find((m) => m.id === evt.driveMediaId)
+              : undefined;
             const calDownloadOrLink = calendarLinks[evt.id];
             const panelId = `event-panel-${evt.id}`;
 
@@ -289,36 +298,44 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
                   >
                     {/* Left Column: Event Details, Host, Attendance RSVP & Calendar */}
                     <div className="lg:col-span-6 flex flex-col gap-4">
-                      {/* Cover Image with Contrast Scrim */}
-                      <div className="relative w-full h-44 sm:h-48 rounded-xl bg-primary-fixed overflow-hidden">
-                        {evt.coverImageUrl && !bannerBroken ? (
-                          <img
-                            src={evt.coverImageUrl}
-                            alt={evt.title}
-                            referrerPolicy="no-referrer"
-                            onError={() =>
-                              setBrokenBanners((prev) => ({ ...prev, [evt.id]: true }))
-                            }
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-primary-fixed via-secondary-fixed to-tertiary-fixed flex items-center justify-center">
-                            <Calendar className="w-10 h-10 text-primary/60" />
+                      {/* Cover Image or Drive Media */}
+                      {linkedDriveMedia && !evt.coverImageUrl ? (
+                        <DriveMediaCard media={linkedDriveMedia} />
+                      ) : (
+                        <div className="relative w-full h-44 sm:h-48 rounded-xl bg-primary-fixed overflow-hidden">
+                          {evt.coverImageUrl && !bannerBroken ? (
+                            <img
+                              src={evt.coverImageUrl}
+                              alt={evt.title}
+                              referrerPolicy="no-referrer"
+                              onError={() =>
+                                setBrokenBanners((prev) => ({ ...prev, [evt.id]: true }))
+                              }
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-primary-fixed via-secondary-fixed to-tertiary-fixed flex items-center justify-center">
+                              <Calendar className="w-10 h-10 text-primary/60" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/85 via-inverse-surface/25 to-transparent" />
+                          <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-2 text-white text-xs">
+                            <span className="inline-flex items-center gap-1.5 font-medium">
+                              <Clock className="w-3.5 h-3.5 text-tertiary-fixed-dim shrink-0" />
+                              <span>{evt.timeRangeLabel}</span>
+                            </span>
+                            <span className="text-white/90 text-xs">{evt.admissionLabel}</span>
                           </div>
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-inverse-surface/85 via-inverse-surface/25 to-transparent" />
-                        <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-2 text-white text-xs">
-                          <span className="inline-flex items-center gap-1.5 font-medium">
-                            <Clock className="w-3.5 h-3.5 text-tertiary-fixed-dim shrink-0" />
-                            <span>{evt.timeRangeLabel}</span>
-                          </span>
-                          <span className="text-white/90 text-xs">{evt.admissionLabel}</span>
                         </div>
-                      </div>
+                      )}
 
                       <p className="text-sm text-on-surface-variant leading-relaxed">
                         {evt.description}
                       </p>
+
+                      {linkedDriveMedia && evt.coverImageUrl && (
+                        <DriveMediaCard media={linkedDriveMedia} />
+                      )}
 
                       {/* Host & Invite Row */}
                       <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-surface-container-low gap-2">
@@ -728,19 +745,23 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
             placeholder="What should neighbors bring or expect?"
             className="w-full p-3 rounded-xl bg-surface-container-low text-sm text-on-surface focus:outline-none resize-none"
           />
+          <DriveUploadField
+            selectedMedia={eventDriveMedia}
+            onSelectMedia={setEventDriveMedia}
+          />
           {formError && <p className="text-xs font-medium text-error">{formError}</p>}
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setProposeOpen(false)}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-surface-container text-on-surface text-sm font-medium"
+              className="min-h-[44px] w-full sm:w-auto px-4 py-2 rounded-xl bg-surface-container text-on-surface text-sm font-medium"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={() => void handleCreateEvent()}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold"
+              className="min-h-[44px] w-full sm:w-auto px-5 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold"
             >
               Publish Event
             </button>

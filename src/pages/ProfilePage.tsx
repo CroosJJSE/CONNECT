@@ -43,7 +43,6 @@ export function ProfilePage() {
     sharingRequests,
     driveMedia,
     driveAuthorized,
-    authorizeDrive,
     revokeDrive,
     updateDriveMediaVisibility,
     calendarReminderMinutes,
@@ -228,8 +227,8 @@ export function ProfilePage() {
                 </p>
                 <p className="text-xs text-on-surface-variant truncate">
                   {driveAuthorized
-                    ? `Connected · ${driveMedia.length} file(s) in CONNECT App Media`
-                    : 'Authorize personal Drive folder for your uploaded media'}
+                    ? `Connected · ${driveMedia.length} file(s) in Google Drive`
+                    : 'Connect with Google Drive to upload photos & videos'}
                 </p>
               </div>
             </div>
@@ -490,71 +489,63 @@ export function ProfilePage() {
 
       <ModalSheet
         open={activeSheet === 'drive_vault'}
-        title="Google Drive Media Vault"
-        subtitle="All uploaded files belong solely to your Google Drive in the 'CONNECT App Media' folder"
+        title="Google Drive Media"
+        subtitle="Your uploaded photos and videos stay inside your personal Google Drive"
         onClose={() => setActiveSheet(null)}
       >
         <div className="flex flex-col gap-4">
-          <div className="p-3.5 rounded-xl bg-surface-container-low flex items-center justify-between gap-3">
-            <div className="text-xs">
-              <p className="font-semibold text-on-surface">
-                {driveAuthorized ? 'Drive Folder Connected' : 'Drive Not Yet Connected'}
-              </p>
-              <p className="text-on-surface-variant mt-0.5">
-                OAuth tokens stay in memory only and are never saved in Firestore.
-              </p>
-            </div>
-            {driveAuthorized ? (
+          <DriveUploadField selectedMedia={null} onSelectMedia={() => {}} />
+
+          {driveAuthorized && (
+            <div className="p-3.5 rounded-xl bg-surface-container-low flex items-center justify-between gap-3">
+              <div className="text-xs min-w-0">
+                <p className="font-semibold text-on-surface">Google Drive connected</p>
+                <p className="text-on-surface-variant mt-0.5 truncate">
+                  Saved in your dedicated CONNECT App Media folder
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => void revokeDrive()}
-                className="px-3 py-1.5 rounded-lg bg-error-container text-on-error-container text-xs font-semibold whitespace-nowrap"
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-error-container text-on-error-container text-xs font-semibold whitespace-nowrap shrink-0"
               >
                 Disconnect
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void authorizeDrive()}
-                className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold whitespace-nowrap"
-              >
-                Authorize Drive
-              </button>
-            )}
-          </div>
+            </div>
+          )}
 
-          <DriveUploadField selectedMedia={null} onSelectMedia={() => {}} />
-
-          <div className="flex flex-col gap-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-              Your Stored Drive Media ({driveMedia.length})
-            </h4>
-            {driveMedia.map((m) => (
-              <div key={m.id} className="flex flex-col gap-2">
-                <DriveMediaCard media={m} />
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void updateDriveMediaVisibility(
-                        m.id,
-                        m.visibility === 'private' ? 'anyone_with_link' : 'private'
-                      )
-                    }
-                    className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    <Lock className="w-3 h-3" />
-                    <span>
-                      Switch to{' '}
-                      {m.visibility === 'private'
-                        ? 'Anyone with link can view'
-                        : 'Private only'}
-                    </span>
-                  </button>
+          {driveMedia.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant tabular-nums">
+                Your Uploaded Media ({driveMedia.length})
+              </h4>
+              {driveMedia.map((m) => (
+                <div key={m.id} className="flex flex-col gap-1.5">
+                  <DriveMediaCard media={m} />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void updateDriveMediaVisibility(
+                          m.id,
+                          m.visibility === 'private' ? 'anyone_with_link' : 'private'
+                        )
+                      }
+                      className="min-h-[44px] px-2.5 text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1.5"
+                    >
+                      <Lock className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        Switch to{' '}
+                        {m.visibility === 'private'
+                          ? 'Anyone with link can view'
+                          : 'Private only'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </ModalSheet>
 

@@ -675,6 +675,7 @@ export class MockEventRepository implements IEventRepository {
       startIso,
       endIso,
       admissionLabel: 'Free Admission',
+      driveMediaId: input.driveMediaId,
       invitedUserIds: [input.host.uid],
       rsvps: { [input.host.uid]: 'going' },
       tasks: [],

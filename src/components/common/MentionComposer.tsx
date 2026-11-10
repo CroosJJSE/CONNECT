@@ -244,9 +244,9 @@ export function MentionTextArea({
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={triggerMentionAtCursor}
-            className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface-container-low hover:bg-surface-container text-xs font-medium text-on-surface-variant hover:text-primary inline-flex items-center gap-1 transition-colors whitespace-nowrap"
+            className="min-h-[44px] px-3 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-xs font-medium text-on-surface-variant hover:text-primary inline-flex items-center gap-1.5 transition-colors whitespace-nowrap"
           >
-            <AtSign className="w-3.5 h-3.5 text-primary" />
+            <AtSign className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>Mention neighbor</span>
           </button>
 
@@ -429,7 +429,7 @@ export function MentionInput({
           onClick={triggerMentionAtCursor}
           aria-label="Mention a neighbor"
           title="Mention a neighbor (@)"
-          className="p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-primary-fixed/40 transition-colors shrink-0"
+          className="min-w-[44px] min-h-[44px] -my-1 -ml-1 flex items-center justify-center rounded-xl text-on-surface-variant hover:text-primary hover:bg-primary-fixed/40 transition-colors shrink-0"
         >
           <AtSign className="w-4 h-4" />
         </button>
@@ -463,7 +463,7 @@ export function MentionInput({
             setDismissed(true);
             onSubmit();
           }}
-          className="p-1.5 text-primary hover:bg-primary-fixed/40 rounded-lg transition-colors shrink-0"
+          className="min-w-[44px] min-h-[44px] -my-1 -mr-1 flex items-center justify-center text-primary hover:bg-primary-fixed/40 rounded-xl transition-colors shrink-0"
         >
           <Send className="w-4 h-4" />
         </button>
