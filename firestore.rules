@@ -1,0 +1,312 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Shared Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isCommunityMember(communityId) {
+      return isSignedIn()
+        && isValidId(communityId)
+        && exists(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/communities/$(communityId)/members/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isInAuthorOrbit(authorId) {
+      return isSignedIn()
+        && isValidId(authorId)
+        && exists(/databases/$(database)/documents/orbits/$(authorId)/members/$(request.auth.uid));
+    }
+
+    // --- User Public Profiles & Split PII ---
+    match /users/{userId} {
+      function isValidUserPublic(data) {
+        return data.keys().hasAll(['uid', 'displayName', 'initials', 'role', 'verified'])
+          && data.keys().hasOnly(['uid', 'displayName', 'initials', 'avatarUrl', 'clusterName', 'unitLabel', 'bio', 'role', 'verified', 'joinedAt'])
+          && isValidId(data.uid)
+          && data.uid == request.auth.uid
+          && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+          && data.initials is string && data.initials.size() >= 1 && data.initials.size() <= 4
+          && (!('bio' in data) || (data.bio is string && data.bio.size() <= 300))
+          && (!('clusterName' in data) || (data.clusterName is string && data.clusterName.size() <= 100))
+          && (!('unitLabel' in data) || (data.unitLabel is string && data.unitLabel.size() <= 40))
+          && data.role in ['member', 'steward', 'admin']
+          && data.verified is bool;
+      }
+
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn();
+      allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId)
+        && isValidUserPublic(incoming())
+        && incoming().role == 'member';
+      allow update: if isVerifiedUser() && (isOwner(userId) || isAdmin()) && isValidId(userId)
+        && isValidUserPublic(incoming())
+        && incoming().uid == existing().uid
+        && (isAdmin() || (incoming().role == existing().role && incoming().verified == existing().verified))
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'initials', 'avatarUrl', 'clusterName', 'unitLabel', 'bio']);
+
+      match /private/{docId} {
+        allow get: if isOwner(userId) && docId == 'info';
+        allow create, update: if isVerifiedUser() && isOwner(userId) && docId == 'info'
+          && incoming().uid == request.auth.uid
+          && incoming().preferredCurrency in ['LKR', 'USD']
+          && (!('financeEnabled' in incoming()) || incoming().financeEnabled is bool);
+      }
+
+      // --- Personal Finance (Strictly Owner-Only) ---
+      match /transactions/{transactionId} {
+        function isValidTransaction(data) {
+          return data.keys().hasAll(['id', 'ownerId', 'title', 'amount', 'type', 'category', 'occurredAt'])
+            && data.keys().hasOnly(['id', 'ownerId', 'title', 'amount', 'type', 'category', 'source', 'occurredAt', 'notes'])
+            && isValidId(data.id)
+            && data.ownerId == request.auth.uid
+            && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+            && data.amount is number && data.amount >= 0
+            && data.type in ['income', 'expense']
+            && data.category is string && data.category.size() >= 1 && data.category.size() <= 60;
+        }
+
+        allow get, list: if isOwner(userId);
+        allow create: if isVerifiedUser() && isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming());
+        allow update: if isVerifiedUser() && isOwner(userId) && isValidId(transactionId)
+          && isValidTransaction(incoming())
+          && incoming().ownerId == existing().ownerId;
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      match /budgets/{budgetId} {
+        allow read, write: if isOwner(userId) && isValidId(budgetId);
+      }
+
+      match /savingsGoals/{goalId} {
+        allow read, write: if isOwner(userId) && isValidId(goalId);
+      }
+    }
+
+    // --- Communities & Memberships ---
+    match /communities/{communityId} {
+      allow get: if isSignedIn() && isValidId(communityId);
+      allow list: if isSignedIn();
+      allow create, update: if isAdmin() && isValidId(communityId);
+
+      match /members/{memberId} {
+        allow get: if isSignedIn() && isValidId(communityId) && isValidId(memberId)
+          && (isOwner(memberId) || isCommunityMember(communityId) || isAdmin());
+        allow list: if isCommunityMember(communityId) || isAdmin();
+        allow create, update, delete: if isAdmin() && isValidId(communityId) && isValidId(memberId);
+      }
+    }
+
+    // --- My Orbit (Owner-Managed Close Friends Circle) ---
+    match /orbits/{ownerId}/members/{friendUserId} {
+      allow get, list: if isOwner(ownerId) || (isSignedIn() && request.auth.uid == friendUserId);
+      allow create: if isVerifiedUser() && isOwner(ownerId) && isValidId(friendUserId)
+        && incoming().keys().hasAll(['ownerId', 'friendUserId'])
+        && incoming().ownerId == request.auth.uid
+        && incoming().friendUserId == friendUserId
+        && exists(/databases/$(database)/documents/users/$(friendUserId));
+      allow delete: if isOwner(ownerId) && isValidId(friendUserId);
+    }
+
+    // --- Community, Orbit & Private Posts ---
+    match /posts/{postId} {
+      function isValidPost(data) {
+        return data.keys().hasAll(['id', 'authorId', 'category', 'content', 'audienceType', 'createdAt', 'updatedAt'])
+          && data.keys().hasOnly(['id', 'authorId', 'category', 'content', 'audienceType', 'communityIds', 'mentionedUserIds', 'driveMediaId', 'pinned', 'createdAt', 'updatedAt'])
+          && isValidId(data.id)
+          && data.authorId == request.auth.uid
+          && data.category in ['General Update', 'Achievement', 'Testimony', 'Question', 'Community Activity', 'Announcement']
+          && data.content is string && data.content.size() >= 1 && data.content.size() <= 3000
+          && data.audienceType in ['communities', 'orbit', 'private']
+          && (!('communityIds' in data) || (data.communityIds is list && data.communityIds.size() <= 10))
+          && (!('mentionedUserIds' in data) || (data.mentionedUserIds is list && data.mentionedUserIds.size() <= 20))
+          && (!('driveMediaId' in data) || (data.driveMediaId is string && data.driveMediaId.size() <= 128));
+      }
+
+      function canReadPostData(data) {
+        return data.authorId == request.auth.uid
+          || (data.audienceType == 'orbit' && isInAuthorOrbit(data.authorId))
+          || (data.audienceType == 'communities' && data.communityIds.size() > 0 && isCommunityMember(data.communityIds[0]));
+      }
+
+      allow get: if isSignedIn() && isValidId(postId) && canReadPostData(existing());
+      allow list: if isSignedIn() && (
+        existing().authorId == request.auth.uid
+        || existing().audienceType in ['communities', 'orbit']
+      );
+      allow create: if isVerifiedUser() && isValidId(postId)
+        && isValidPost(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          incoming().audienceType != 'communities'
+          || (incoming().communityIds.size() > 0 && isCommunityMember(incoming().communityIds[0]))
+        );
+      allow update: if isVerifiedUser() && isValidId(postId)
+        && isValidPost(incoming())
+        && (isOwner(existing().authorId) || isAdmin())
+        && incoming().authorId == existing().authorId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'category', 'audienceType', 'communityIds', 'mentionedUserIds', 'pinned', 'updatedAt']);
+      allow delete: if (isOwner(existing().authorId) || isAdmin()) && isValidId(postId);
+
+      match /comments/{commentId} {
+        allow get, list: if isSignedIn() && canReadPostData(get(/databases/$(database)/documents/posts/$(postId)).data);
+        allow create: if isVerifiedUser() && isValidId(commentId)
+          && canReadPostData(get(/databases/$(database)/documents/posts/$(postId)).data)
+          && incoming().authorId == request.auth.uid
+          && incoming().body is string && incoming().body.size() >= 1 && incoming().body.size() <= 1000;
+        allow delete: if isOwner(existing().authorId) || isAdmin();
+      }
+    }
+
+    // --- Sharing: I Have (Donate / Lend), I Need, I Can ---
+    match /sharingItems/{itemId} {
+      function isValidSharingItem(data) {
+        return data.keys().hasAll(['id', 'ownerId', 'communityId', 'title', 'mode', 'status'])
+          && data.keys().hasOnly(['id', 'ownerId', 'communityId', 'title', 'description', 'category', 'mode', 'status', 'borrowerId', 'durationDays', 'dueDate', 'driveMediaId', 'createdAt', 'updatedAt'])
+          && isValidId(data.id)
+          && isValidId(data.communityId)
+          && data.title is string && data.title.size() >= 2 && data.title.size() <= 120
+          && data.mode in ['donate', 'lend']
+          && data.status in ['available', 'lent_out', 'donated'];
+      }
+
+      allow get: if isSignedIn() && isValidId(itemId) && isCommunityMember(existing().communityId);
+      allow list: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidId(itemId)
+        && isValidSharingItem(incoming())
+        && incoming().ownerId == request.auth.uid
+        && incoming().status == 'available'
+        && isCommunityMember(incoming().communityId);
+      allow update: if isVerifiedUser() && isValidId(itemId)
+        && isValidSharingItem(incoming())
+        && isCommunityMember(existing().communityId)
+        && existing().status != 'donated'
+        && incoming().ownerId == existing().ownerId
+        && (
+          // Owner updates or marks returned
+          (isOwner(existing().ownerId) && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'status', 'borrowerId', 'dueDate', 'updatedAt']))
+          ||
+          // Community member claims or borrows available item
+          (existing().status == 'available' && incoming().borrowerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'borrowerId', 'dueDate', 'updatedAt']))
+        );
+      allow delete: if (isOwner(existing().ownerId) || isAdmin()) && isValidId(itemId);
+    }
+
+    match /sharingRequests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && isCommunityMember(existing().communityId);
+      allow list: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidId(requestId)
+        && incoming().requesterId == request.auth.uid
+        && incoming().status == 'open'
+        && isCommunityMember(incoming().communityId);
+      allow update: if isVerifiedUser() && isValidId(requestId)
+        && (isOwner(existing().requesterId) || isAdmin())
+        && incoming().requesterId == existing().requesterId
+        && existing().status != 'closed';
+      allow delete: if isOwner(existing().requesterId) || isAdmin();
+    }
+
+    match /skillOffers/{offerId} {
+      allow get: if isSignedIn() && isValidId(offerId) && isCommunityMember(existing().communityId);
+      allow list: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidId(offerId)
+        && incoming().providerId == request.auth.uid
+        && isCommunityMember(incoming().communityId);
+      allow update: if isVerifiedUser() && isValidId(offerId) && isOwner(existing().providerId)
+        && incoming().providerId == existing().providerId;
+      allow delete: if isOwner(existing().providerId) || isAdmin();
+    }
+
+    // --- Events, RSVPs & Tasks ---
+    match /events/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId) && isCommunityMember(existing().communityId);
+      allow list: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidId(eventId)
+        && incoming().hostId == request.auth.uid
+        && isCommunityMember(incoming().communityId);
+      allow update: if isVerifiedUser() && isValidId(eventId)
+        && (isOwner(existing().hostId) || isAdmin());
+
+      match /tasks/{taskId} {
+        allow get, list: if isSignedIn() && isCommunityMember(get(/databases/$(database)/documents/events/$(eventId)).data.communityId);
+        allow create: if isVerifiedUser() && isValidId(taskId)
+          && isOwner(get(/databases/$(database)/documents/events/$(eventId)).data.hostId);
+        allow update: if isVerifiedUser() && isValidId(taskId) && (
+          isOwner(get(/databases/$(database)/documents/events/$(eventId)).data.hostId)
+          || (request.auth.uid == existing().assigneeId && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+        );
+      }
+
+      match /discussions/{commentId} {
+        allow get, list: if isSignedIn() && isCommunityMember(get(/databases/$(database)/documents/events/$(eventId)).data.communityId);
+        allow create: if isVerifiedUser() && isValidId(commentId)
+          && isCommunityMember(get(/databases/$(database)/documents/events/$(eventId)).data.communityId)
+          && incoming().authorId == request.auth.uid;
+      }
+    }
+
+    // --- Google Drive Media Metadata (Never stores OAuth access/refresh tokens) ---
+    match /driveMedia/{mediaId} {
+      function isValidDriveMedia(data) {
+        return data.keys().hasAll(['id', 'driveFileId', 'ownerUserId', 'fileName', 'mimeType', 'fileSize', 'visibility', 'driveViewerLink'])
+          && data.keys().hasOnly(['id', 'driveFileId', 'ownerUserId', 'fileName', 'mimeType', 'fileSize', 'visibility', 'driveViewerLink', 'createdAt'])
+          && isValidId(data.id)
+          && data.ownerUserId == request.auth.uid
+          && data.driveFileId is string && data.driveFileId.size() >= 1 && data.driveFileId.size() <= 256
+          && data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 255
+          && data.mimeType is string && data.mimeType.size() >= 3 && data.mimeType.size() <= 120
+          && data.fileSize is int && data.fileSize >= 0
+          && data.visibility in ['private', 'anyone_with_link']
+          && data.driveViewerLink is string && data.driveViewerLink.size() <= 1000;
+      }
+
+      allow get: if isSignedIn() && isValidId(mediaId) && (
+        existing().ownerUserId == request.auth.uid || existing().visibility == 'anyone_with_link'
+      );
+      allow list: if isSignedIn() && (
+        existing().ownerUserId == request.auth.uid || existing().visibility == 'anyone_with_link'
+      );
+      allow create: if isVerifiedUser() && isValidId(mediaId) && isValidDriveMedia(incoming());
+      allow update: if isVerifiedUser() && isValidId(mediaId) && isOwner(existing().ownerId)
+        && isValidDriveMedia(incoming())
+        && incoming().ownerUserId == existing().ownerUserId
+        && incoming().driveFileId == existing().driveFileId;
+      allow delete: if isOwner(existing().ownerUserId) && isValidId(mediaId);
+    }
+  }
+}

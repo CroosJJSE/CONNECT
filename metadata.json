@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "CONNECT",
+  "description": "Modern society-based community platform for mutual sharing, community feeds, My Orbit, event coordination, and personal finance tracking.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

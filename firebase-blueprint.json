@@ -1,0 +1,267 @@
+{
+  "entities": {
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Publicly visible community member profile without private PII",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "initials": { "type": "string", "minLength": 1, "maxLength": 4 },
+        "avatarUrl": { "type": "string", "maxLength": 1000 },
+        "clusterName": { "type": "string", "maxLength": 100 },
+        "unitLabel": { "type": "string", "maxLength": 40 },
+        "bio": { "type": "string", "maxLength": 300 },
+        "role": { "type": "string", "enum": ["member", "steward", "admin"] },
+        "verified": { "type": "boolean" },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "initials", "role", "verified"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Owner-only private user preferences and PII",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "phoneVisibleToHousemates": { "type": "boolean" },
+        "preferredCurrency": { "type": "string", "enum": ["LKR", "USD"] },
+        "driveConnected": { "type": "boolean" },
+        "driveAppFolderId": { "type": "string", "maxLength": 128 },
+        "calendarConnected": { "type": "boolean" },
+        "financeEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "preferredCurrency"]
+    },
+    "Community": {
+      "title": "Community",
+      "description": "Residential society or interest community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "location": { "type": "string", "maxLength": 120 },
+        "memberCount": { "type": "integer" }
+      },
+      "required": ["id", "name"]
+    },
+    "CommunityMembership": {
+      "title": "CommunityMembership",
+      "description": "Membership record linking user and community",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "communityId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "role": { "type": "string", "enum": ["member", "steward", "admin"] },
+        "status": { "type": "string", "enum": ["active", "pending", "suspended"] },
+        "joinedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "communityId", "role", "status"]
+    },
+    "OrbitMember": {
+      "title": "OrbitMember",
+      "description": "Close-friend connection inside an owner's My Orbit list",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "friendUserId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "addedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "friendUserId"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Community, Orbit, or Private post with strict audience rules",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "category": { "type": "string", "enum": ["General Update", "Achievement", "Testimony", "Question", "Community Activity", "Announcement"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 3000 },
+        "audienceType": { "type": "string", "enum": ["communities", "orbit", "private"] },
+        "communityIds": { "type": "array" },
+        "mentionedUserIds": { "type": "array" },
+        "driveMediaId": { "type": "string", "maxLength": 128 },
+        "pinned": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorId", "category", "content", "audienceType"]
+    },
+    "SharingItem": {
+      "title": "SharingItem",
+      "description": "I Have item available to donate permanently or lend temporarily",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "communityId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1200 },
+        "mode": { "type": "string", "enum": ["donate", "lend"] },
+        "status": { "type": "string", "enum": ["available", "lent_out", "donated"] },
+        "borrowerId": { "type": "string", "maxLength": 128 },
+        "durationDays": { "type": "integer" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "driveMediaId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "communityId", "title", "mode", "status"]
+    },
+    "SharingRequest": {
+      "title": "SharingRequest",
+      "description": "I Need request for an item or neighbor assistance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "requesterId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "communityId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1200 },
+        "requiredDuration": { "type": "string", "maxLength": 80 },
+        "status": { "type": "string", "enum": ["open", "in_progress", "closed"] },
+        "driveMediaId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "requesterId", "communityId", "title", "status"]
+    },
+    "SkillOffer": {
+      "title": "SkillOffer",
+      "description": "I Can skill, service, or volunteering offer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "providerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "communityId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 60 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "availability": { "type": "string", "maxLength": 120 },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "providerId", "communityId", "title", "active"]
+    },
+    "CommunityEvent": {
+      "title": "CommunityEvent",
+      "description": "Community gathering or workshop with RSVP and calendar sync",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "hostId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "communityId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "location": { "type": "string", "maxLength": 180 },
+        "startIso": { "type": "string", "format": "date-time" },
+        "endIso": { "type": "string", "format": "date-time" },
+        "category": { "type": "string", "maxLength": 60 }
+      },
+      "required": ["id", "hostId", "communityId", "title", "startIso", "endIso"]
+    },
+    "EventTask": {
+      "title": "EventTask",
+      "description": "Assigned task inside a community event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "assigneeId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "deadlineIso": { "type": "string", "format": "date-time" },
+        "reminderEnabled": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "completed"] }
+      },
+      "required": ["id", "eventId", "title", "assigneeId", "status"]
+    },
+    "DriveMediaMetadata": {
+      "title": "DriveMediaMetadata",
+      "description": "Metadata for user-owned media stored inside user's Google Drive",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "driveFileId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "ownerUserId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "mimeType": { "type": "string", "minLength": 3, "maxLength": 120 },
+        "fileSize": { "type": "integer" },
+        "visibility": { "type": "string", "enum": ["private", "anyone_with_link"] },
+        "driveViewerLink": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "driveFileId", "ownerUserId", "fileName", "mimeType", "fileSize", "visibility", "driveViewerLink"]
+    },
+    "FinanceTransaction": {
+      "title": "FinanceTransaction",
+      "description": "Private personal transaction metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category": { "type": "string", "maxLength": 60 },
+        "source": { "type": "string", "enum": ["manual", "android_sms_future"] },
+        "occurredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "title", "amount", "type", "category", "occurredAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfile" },
+      "description": "Public member profile directory document"
+    },
+    "/users/{userId}/private/info": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Private owner-only preferences and PII"
+    },
+    "/communities/{communityId}": {
+      "schema": { "$ref": "#/entities/Community" },
+      "description": "Society or interest-based community group"
+    },
+    "/communities/{communityId}/members/{userId}": {
+      "schema": { "$ref": "#/entities/CommunityMembership" },
+      "description": "Membership document controlling community access"
+    },
+    "/orbits/{ownerId}/members/{friendUserId}": {
+      "schema": { "$ref": "#/entities/OrbitMember" },
+      "description": "Owner-managed close-friend My Orbit circle"
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Community, Orbit, or Private feed posts"
+    },
+    "/sharingItems/{itemId}": {
+      "schema": { "$ref": "#/entities/SharingItem" },
+      "description": "I Have items available to donate or lend"
+    },
+    "/sharingRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/SharingRequest" },
+      "description": "I Need requests from community members"
+    },
+    "/skillOffers/{offerId}": {
+      "schema": { "$ref": "#/entities/SkillOffer" },
+      "description": "I Can skill and service offers"
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/CommunityEvent" },
+      "description": "Community events and gatherings"
+    },
+    "/events/{eventId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/EventTask" },
+      "description": "Tasks assigned inside a community event"
+    },
+    "/driveMedia/{mediaId}": {
+      "schema": { "$ref": "#/entities/DriveMediaMetadata" },
+      "description": "Google Drive user-owned media metadata (no OAuth tokens)"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/FinanceTransaction" },
+      "description": "Owner-only personal finance transactions"
+    }
+  }
+}
