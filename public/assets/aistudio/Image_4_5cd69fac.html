@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"surface-container":"#ebedf7","error-container":"#ffdad6","tertiary-fixed-dim":"#ffb68c","secondary-container":"#b6d0ff","primary-fixed-dim":"#aac7ff","on-error":"#ffffff","tertiary":"#9a4600","on-primary-fixed":"#001b3e","on-background":"#181c22","surface":"#f9f9ff","surface-tint":"#005db8","background":"#f9f9ff","tertiary-fixed":"#ffdbc9","on-primary-container":"#000512","on-secondary-fixed-variant":"#2d476f","on-primary":"#ffffff","surface-bright":"#f9f9ff","inverse-on-surface":"#eef0fa","on-secondary-container":"#3f5881","tertiary-container":"#c05900","error":"#ba1a1a","on-tertiary-fixed":"#321200","surface-variant":"#e0e2eb","primary":"#005cb8","on-surface":"#181c22","primary-fixed":"#d6e3ff","secondary-fixed-dim":"#aec7f7","on-error-container":"#93000a","on-tertiary-fixed-variant":"#763400","surface-container-high":"#e6e8f1","surface-container-highest":"#e0e2eb","inverse-primary":"#aac7ff","outline-variant":"#c1c6d5","on-surface-variant":"#414753","on-secondary":"#ffffff","on-tertiary":"#ffffff","on-tertiary-container":"#0d0300","outline":"#717785","surface-dim":"#d7dae3","surface-container-lowest":"#ffffff","secondary":"#465f88","on-secondary-fixed":"#001b3d","surface-container-low":"#f1f3fc","inverse-surface":"#2d3037","secondary-fixed":"#d6e3ff","primary-container":"#1275e2","on-primary-container-variant":"#00458d"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"margin":"1.5rem","space-lg":"1.5rem","space-md":"1rem","space-xs":"0.25rem","gutter":"1rem","space-xl":"2rem","space-sm":"0.5rem"},"fontFamily":{"label-sm":["Inter"],"headline-lg":["Inter"],"body-md":["Inter"]},"fontSize":{"label-sm":["12px",{"lineHeight":"16px","fontWeight":"500"}],"headline-lg":["32px",{"lineHeight":"40px","fontWeight":"600"}],"body-md":["16px",{"lineHeight":"24px","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between p-space-md"><div class="flex flex-col gap-space-lg"><div class="flex items-center gap-space-sm px-space-xs"><img alt="Warm, community-focused emblem for GCF Connect featuring intertwined gentle arches or hands forming a subtle heart and leaf, symbolizing sharing and mutual support.. Brand logo. - Primary color: #1275e2
+- Font: inter
+- Mode: light
+- Roundness: rounded-md
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WXTQM_RxUdG1-P5JqxNTTmj2Sxk5hy3fMpwYbsracCQLEizN5XQVXSTxvcxnRh-ieepmdSD9sWnw-lE-U9sxAuNg-rC_AhxGt2v4HORSKj-jsRRnoX31m3JE14jTNR6huIXyAJsV9MOdWXRMsqwlGw1WMyfBY2kcV0fioAjIjR-DpDrU3_J9RNKHkGut4lpfbHJsw7WJFpBSquA5FPwpT49YN4ktUdJLGvPbGGDmXL8e41xPJ2l-yHEkU"/><div class="flex flex-col"><span class="font-label-sm text-label-sm font-semibold text-primary tracking-tight">GCF Connect</span><span class="font-label-sm text-label-sm text-on-surface-variant text-xs">Community Hub</span></div></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-secondary-container text-on-secondary-container font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg transition-all bg-secondary-container text-on-secondary-container font-semibold shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-path="feed" href="#"><span class="material-symbols-outlined text-[20px]">cottage</span><span class="font-label-sm text-label-sm">Home / Feed</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="exchange" href="#"><span class="material-symbols-outlined text-[20px]">swap_horiz</span><span class="font-label-sm text-label-sm">Exchange / Share</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="events" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span><span class="font-label-sm text-label-sm">Events</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="boarding" href="#"><span class="material-symbols-outlined text-[20px]">door_front</span><span class="font-label-sm text-label-sm">Boarding</span></a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="profile-settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-sm text-label-sm">Profile & Settings</span></a></nav></div><div class="flex items-center justify-between p-space-sm bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center gap-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Vz6-FX2Jn4at-Hfb9GuaFSEc5s0WV4NaV82cS92BSYyIYRIld1qJIyuXUu34ZprD0IkuGEmKzodF0MMwEJbF8kN6O63aw45y-Y7v-kEd4ZzfVKYQbcph-T-AXdCqBe2gyUXyTFhYwIY2lk4BXfRA1FxstbWyAvUWck1jE6DxHRbTjt3e05qd2yEUJqPrcP2IJv_XGVPhgjZGNT8Gp_2FwtDSAOJwp12rUpOimZSePKoioyV8qECXdYiQ"/><div class="flex flex-col"><span class="font-label-sm text-label-sm text-on-surface font-semibold">Sarah Jenkins</span><span class="font-label-sm text-label-sm text-on-surface-variant text-[11px]">Active Member</span></div></div><a class="text-on-surface-variant hover:text-on-surface transition-colors p-space-xs" data-path="profile-settings" href="#"><span class="material-symbols-outlined text-[20px]">more_vert</span></a></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-xl"><div class="flex items-center gap-space-md flex-1 max-w-md"><div class="flex items-center gap-space-sm w-full bg-surface-container-low px-space-md py-space-xs rounded-full"><span class="material-symbols-outlined text-on-surface-variant text-[20px]">search</span><input class="w-full bg-transparent border-0 focus:outline-none font-label-sm text-label-sm text-on-surface placeholder:text-on-surface-variant" placeholder="Search posts, resources, neighbors..." type="text"/></div></div><div class="flex items-center gap-space-md"><button class="relative p-space-xs text-on-surface-variant hover:text-on-surface transition-colors rounded-full hover:bg-surface-container"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span></button><button class="relative p-space-xs text-on-surface-variant hover:text-on-surface transition-colors rounded-full hover:bg-surface-container"><span class="material-symbols-outlined text-[22px]">chat_bubble</span></button><div class="h-5 w-[1px] bg-surface-container-high"></div><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1Vz6-FX2Jn4at-Hfb9GuaFSEc5s0WV4NaV82cS92BSYyIYRIld1qJIyuXUu34ZprD0IkuGEmKzodF0MMwEJbF8kN6O63aw45y-Y7v-kEd4ZzfVKYQbcph-T-AXdCqBe2gyUXyTFhYwIY2lk4BXfRA1FxstbWyAvUWck1jE6DxHRbTjt3e05qd2yEUJqPrcP2IJv_XGVPhgjZGNT8Gp_2FwtDSAOJwp12rUpOimZSePKoioyV8qECXdYiQ"/></div></header><main class="relative pt-16 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<!-- Feed View Container -->
+<div class="px-space-xl py-space-lg w-full max-w-[1360px] mx-auto">
+<!-- 1. Page Header -->
+<header class="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-xl">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            Verified Members Only
+          </span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">• 142 Active Neighbors</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight mt-1">Community Feed</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Stay connected with what's happening across our GCF community.</p>
+</div>
+<div class="flex items-center gap-space-sm self-start md:self-auto">
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant font-label-sm text-label-sm shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">shield</span>
+          No Algorithm • Purely Chronological
+        </span>
+</div>
+</header>
+<!-- Main Content Layout (2 Columns: Central Feed + Right Sidebar) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+<!-- Central Feed Column (Span 8) -->
+<section class="lg:col-span-8 flex flex-col gap-space-lg">
+<!-- 2. Create Post Composer Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md transition-all">
+<div class="flex items-start gap-space-md">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center font-label-sm text-primary font-semibold flex-shrink-0">
+              EV
+            </div>
+<div class="flex-1 flex flex-col gap-space-sm">
+<textarea class="w-full bg-surface-container-low rounded-lg p-space-md font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container transition-all resize-none" id="composer-textarea" placeholder="What's happening in your life, Elena?" rows="2"></textarea>
+<!-- Category Chips Scrollable Row -->
+<div class="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none" id="category-selector">
+<button class="category-chip px-3 py-1 rounded-full font-label-sm text-label-sm bg-primary text-on-primary transition-all" type="button">General Update</button>
+<button class="category-chip px-3 py-1 rounded-full font-label-sm text-label-sm bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all" type="button">Achievement</button>
+<button class="category-chip px-3 py-1 rounded-full font-label-sm text-label-sm bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all" type="button">Testimony</button>
+<button class="category-chip px-3 py-1 rounded-full font-label-sm text-label-sm bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all" type="button">Question</button>
+<button class="category-chip px-3 py-1 rounded-full font-label-sm text-label-sm bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all" type="button">Community Activity</button>
+<button class="category-chip px-3 py-1 rounded-full font-label-sm text-label-sm bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-all" type="button">Announcement (Admin)</button>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors font-label-sm text-label-sm" type="button">
+<span class="material-symbols-outlined text-[18px] text-primary">add_photo_alternate</span>
+<span>Add Photos</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors font-label-sm text-label-sm" type="button">
+<span class="material-symbols-outlined text-[18px] text-tertiary">sentiment_satisfied</span>
+<span>Feeling / Reflection</span>
+</button>
+</div>
+<button class="flex items-center gap-2 px-space-md py-2 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold hover:bg-primary transition-all shadow-sm" type="button">
+<span>Post to Community</span>
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+<!-- 3. Feed Filters -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm bg-surface-container-low px-space-md py-2 rounded-xl">
+<div class="flex items-center gap-1.5">
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-sm transition-all">All Posts</button>
+<button class="px-3.5 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-all">Following</button>
+<button class="px-3.5 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-all">Announcements</button>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant font-label-sm text-label-sm self-end sm:self-auto">
+<span>Newest first • Chronological feed</span>
+<span class="material-symbols-outlined text-[16px]">tune</span>
+</div>
+</div>
+<!-- 4. Sample Post Cards -->
+<!-- Card 1: Pinned Community Announcement -->
+<article class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col transition-all hover:shadow-md">
+<!-- Pinned Banner -->
+<div class="bg-primary/10 px-space-lg py-2 flex items-center gap-2 text-primary font-label-sm text-label-sm font-medium">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">push_pin</span>
+<span>Pinned by Community Stewards</span>
+</div>
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-sm font-semibold">
+                  DT
+                </div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">David T.</span>
+<span class="px-1.5 py-0.5 rounded bg-primary-fixed text-on-primary-fixed font-label-sm text-[10px] uppercase font-bold tracking-wider">Community Admin</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">4 hours ago • Lotus Grove Cluster</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant">Announcement</span>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Body -->
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+              Annual Harvest Potluck & Solar Roof Milestone: Join us this Saturday at 6:00 PM on the Havelock Terrace! We're celebrating achieving 85% clean solar energy independence across Lotus Grove and sharing garden yields. Bring your favorite dessert or side dish!
+            </p>
+<!-- Image Media -->
+<div class="rounded-xl overflow-hidden shadow-sm aspect-video w-full bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A lush tropical outdoor community dinner in late golden hour. Neighbors gathered at long wooden rustic communal tables surrounded by vibrant garden greenery, lantern string lights, sharing food and wine, warm friendly communal atmosphere in rich earthy and green tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMHxUQvW3Tf6emAYOBjFk3Gc62gyhlordB7IZrt2OYvgq4nd8yP0hYLfjJJgLKcYEexA0khd4FR722fwPQL7dJvnnKUCaqYQfF7MXjAOETSZeJ2e6yX_db5-tFiYya1cwBhrZNKx4BktKdv81b--nAiSD8aZbN0DUFkOGwHcOUcl5Y1yIEUGp3PL5XNz9YPkGNe1gcfG2K0VeoSgVmx-T41-ZbdWxItV85f3XIevM"/>
+</div>
+<!-- Actions -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-md">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-tertiary font-label-sm text-label-sm group transition-colors">
+<span class="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform text-tertiary" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="font-semibold text-on-surface">24</span>
+<span class="hidden sm:inline">Warmth</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[20px]">mode_comment</span>
+<span class="font-semibold text-on-surface">8</span>
+<span class="hidden sm:inline">Comments</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[20px]">share</span>
+<span class="hidden sm:inline">Share to House / Group</span>
+</button>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Havelock Terrace Area</span>
+</div>
+</div>
+</article>
+<!-- Card 2: Community Activity & Photos with Comments -->
+<article class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md transition-all hover:shadow-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-label-sm font-semibold">
+                ML
+              </div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Marcus L.</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">5 hours ago • Rooftop Farm Steward</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-secondary-container/60 font-label-sm text-label-sm text-on-secondary-container">Community Activity</span>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Body -->
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+            First harvest from our community rooftop garden! The heirloom cherry tomatoes, kale, and long eggplants are ready. Crates have been brought down to the Common House kitchen pantry for everyone to share. Huge thanks to everyone who watered the beds during the heatwave!
+          </p>
+<!-- Image Grid -->
+<div class="rounded-xl overflow-hidden shadow-sm aspect-[16/10] w-full bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Urban rooftop garden community harvest with three smiling diverse residents standing by wooden crates filled with freshly picked organic vegetables, carrots, tomatoes, eggplants, with modern city skyline in soft sunlight, green foliage and cozy atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-iJ0TSTFaBaJ9GN7RT_ohUBj8Z5FIIMLs4mN5UKACr4VOKJgrvzxPg1wxedTq3UJ6FGd9-WxkrhAOXYkQ1o30jdDAJe81syRZFdHo0hY9SXApx91gPBVkqW2yP86VqHkeuiMtd-t7FAobG8_E1yfEE_WjOvjULe-4r9Aim6XfWgTPx44a6uv8oMnavS53PiSiqzeBHXYe5xMEpJ2Y83GtyEHVsw4AI4vHBqdarfM"/>
+</div>
+<!-- Actions -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-md">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-tertiary font-label-sm text-label-sm group transition-colors">
+<span class="material-symbols-outlined text-[20px] text-tertiary group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="font-semibold text-on-surface">31</span>
+<span class="hidden sm:inline">Warm reactions</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[20px]">mode_comment</span>
+<span class="font-semibold text-on-surface">6</span>
+<span class="hidden sm:inline">Comments</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[20px]">share</span>
+<span class="hidden sm:inline">Share</span>
+</button>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Common House Kitchen</span>
+</div>
+<!-- Expanded Comments Section -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-md mt-2">
+<!-- Comment 1 -->
+<div class="flex items-start gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center font-label-sm font-semibold flex-shrink-0 text-xs">
+                SN
+              </div>
+<div class="flex-1 bg-surface-container-lowest rounded-lg p-space-sm shadow-sm flex flex-col gap-0.5">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Samira N.</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant">3 hours ago</span>
+</div>
+<p class="font-body-md text-sm text-on-surface">Picked up a crate of tomatoes for making sundried tomato paste for the community pantry! Thank you Marcus!</p>
+</div>
+</div>
+<!-- Comment 2 -->
+<div class="flex items-start gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center font-label-sm font-semibold flex-shrink-0 text-xs">
+                SK
+              </div>
+<div class="flex-1 bg-surface-container-lowest rounded-lg p-space-sm shadow-sm flex flex-col gap-0.5">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Sarah K.</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant">1 hour ago</span>
+</div>
+<p class="font-body-md text-sm text-on-surface">The rooftop looked gorgeous yesterday. Happy to cover watering shift next Tuesday.</p>
+</div>
+</div>
+<!-- Inline Comment Input -->
+<div class="flex items-center gap-space-sm pt-1">
+<div class="w-8 h-8 rounded-full bg-surface-container text-primary flex items-center justify-center font-label-sm text-xs font-semibold flex-shrink-0">
+                EV
+              </div>
+<div class="flex-1 flex items-center bg-surface-container-lowest rounded-lg px-space-md py-1.5 shadow-sm">
+<input class="w-full bg-transparent font-body-md text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none" placeholder="Write a warm reply or note..." type="text"/>
+<button class="text-primary hover:text-on-primary-fixed-variant p-1 rounded-full transition-colors flex-shrink-0" type="button">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Card 3: Personal Milestone / Achievement -->
+<article class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md transition-all hover:shadow-md">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center font-label-sm font-semibold">
+                KP
+              </div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Kusal P.</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Yesterday • Resident Member</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-tertiary-fixed/60 font-label-sm text-label-sm text-on-tertiary-fixed-variant">Achievement</span>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-2">
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+              “So grateful to share that after 9 months of night classes and mentorship from neighbors here, I’ve completed my certification in Renewable Energy Systems and started as Junior Technician at Lanka Solar Co-op! Couldn’t have done this without study sessions in the Common Library. Deep gratitude to this community.”
+            </p>
+<div class="flex items-center gap-2 text-primary font-label-sm text-label-sm pt-1">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+<span>Lanka Solar Co-op • Certified Solar Technician</span>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-md">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-tertiary font-label-sm text-label-sm group transition-colors">
+<span class="material-symbols-outlined text-[20px] text-tertiary group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="font-semibold text-on-surface">42</span>
+<span class="hidden sm:inline">Warm reactions</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[20px]">mode_comment</span>
+<span class="font-semibold text-on-surface">14</span>
+<span class="hidden sm:inline">Comments</span>
+</button>
+</div>
+<button class="flex items-center gap-1 text-primary font-label-sm text-label-sm hover:underline">
+<span>Send congratulations</span>
+<span class="material-symbols-outlined text-[16px]">celebration</span>
+</button>
+</div>
+</article>
+<!-- Card 4: Member Question / Neighbor Inquiry -->
+<article class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md transition-all hover:shadow-md">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center font-label-sm font-semibold">
+                AS
+              </div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Ananya Sen</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">2 days ago • Family Block 2</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full bg-surface-container font-label-sm text-label-sm text-on-surface-variant">Question</span>
+<button class="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+            Does anyone have recommendations for child-friendly nature trails near Colombo for this coming Sunday morning? Planning a light hike with the kids and happy to welcome others if anyone wants to join!
+          </p>
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-md">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-tertiary font-label-sm text-label-sm group transition-colors">
+<span class="material-symbols-outlined text-[20px] text-tertiary group-hover:scale-110 transition-transform">favorite</span>
+<span class="font-semibold text-on-surface">12</span>
+<span class="hidden sm:inline">Warm reactions</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[20px]">lightbulb</span>
+<span class="font-semibold text-on-surface">7</span>
+<span class="hidden sm:inline">Helpful tips</span>
+</button>
+</div>
+<button class="px-3 py-1 rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high font-label-sm text-label-sm font-semibold transition-colors">
+              Offer a Recommendation
+            </button>
+</div>
+</article>
+</section>
+<!-- 5. Right Sidebar (Span 4) -->
+<aside class="lg:col-span-4 flex flex-col gap-space-lg">
+<!-- Section 1: Upcoming Community Gatherings -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+<h2 class="font-label-sm text-label-sm font-bold text-on-surface uppercase tracking-wider">Upcoming Gatherings</h2>
+</div>
+<a class="text-primary font-label-sm text-label-sm hover:underline" href="#">View All</a>
+</div>
+<div class="flex flex-col gap-space-md">
+<!-- Event 1 -->
+<div class="flex items-start gap-space-sm p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="w-12 h-12 rounded-lg bg-secondary-container text-on-secondary-container flex flex-col items-center justify-center flex-shrink-0 font-label-sm">
+<span class="text-[10px] font-bold uppercase leading-tight">Oct</span>
+<span class="text-base font-bold leading-tight">12</span>
+</div>
+<div class="flex-1 flex flex-col">
+<h3 class="font-label-sm text-label-sm font-semibold text-on-surface">GCF Community Potluck</h3>
+<span class="font-label-sm text-[11px] text-on-surface-variant">Oct 12, 6:30 PM</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant">Havelock Common House</span>
+<a class="text-primary font-label-sm text-xs font-semibold mt-1 hover:underline inline-flex items-center gap-0.5" href="#">
+                  View Event
+                  <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="flex items-start gap-space-sm p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="w-12 h-12 rounded-lg bg-primary-fixed text-on-primary-fixed flex flex-col items-center justify-center flex-shrink-0 font-label-sm">
+<span class="text-[10px] font-bold uppercase leading-tight">Oct</span>
+<span class="text-base font-bold leading-tight">18</span>
+</div>
+<div class="flex-1 flex flex-col">
+<h3 class="font-label-sm text-label-sm font-semibold text-on-surface">Bicycle Maintenance Workshop</h3>
+<span class="font-label-sm text-[11px] text-on-surface-variant">Oct 18, 9:00 AM</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant">Workshop Shed 2</span>
+<a class="text-primary font-label-sm text-xs font-semibold mt-1 hover:underline inline-flex items-center gap-0.5" href="#">
+                  View Event
+                  <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Important Notices -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[20px]">info</span>
+<h2 class="font-label-sm text-label-sm font-bold text-on-surface uppercase tracking-wider">Important Notices</h2>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm font-semibold text-on-surface">
+<span class="w-2 h-2 rounded-full bg-primary flex-shrink-0"></span>
+<span>Compost Bin Orientation</span>
+</div>
+<p class="font-label-sm text-xs text-on-surface-variant pl-3.5">
+                Held at Unit 3B Garden beds this Wednesday 5:00 PM for new composters.
+              </p>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm font-semibold text-on-surface">
+<span class="w-2 h-2 rounded-full bg-tertiary flex-shrink-0"></span>
+<span>Mesh Wi-Fi Maintenance</span>
+</div>
+<p class="font-label-sm text-xs text-on-surface-variant pl-3.5">
+                Scheduled brief reboot this Thursday at 1:00 AM (~15 min window).
+              </p>
+</div>
+</div>
+</div>
+<!-- Section 3: Welcome New Members -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">waving_hand</span>
+<h2 class="font-label-sm text-label-sm font-bold text-on-surface uppercase tracking-wider">Welcome New Members</h2>
+</div>
+<div class="flex flex-col gap-space-sm">
+<!-- Member 1 -->
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-sm font-semibold text-xs">
+                  RD
+                </div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Rohan D.</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant">Unit 4A • Joined this week</span>
+</div>
+</div>
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface font-label-sm text-xs font-semibold hover:bg-primary hover:text-on-primary transition-colors">
+                Say Hello
+              </button>
+</div>
+<!-- Member 2 -->
+<div class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center font-label-sm font-semibold text-xs">
+                  PM
+                </div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface">Priyantha M.</span>
+<span class="font-label-sm text-[11px] text-on-surface-variant">Unit 1C • Joined this week</span>
+</div>
+</div>
+<button class="px-2.5 py-1 rounded bg-surface-container text-on-surface font-label-sm text-xs font-semibold hover:bg-primary hover:text-on-primary transition-colors">
+                Say Hello
+              </button>
+</div>
+</div>
+</div>
+<!-- Footer Notice -->
+<div class="p-space-md text-center flex flex-col gap-1 text-on-surface-variant font-label-sm text-xs">
+<span>Made with care by WeGrow Cooperative</span>
+<span>Safe & Private GCF Space • Strictly Non-commercial</span>
+</div>
+</aside>
+</div>
+</div>
+<!-- Interactive script for chip toggle -->
+<script>
+    document.querySelectorAll('#category-selector .category-chip').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('#category-selector .category-chip').forEach(b => {
+          b.classList.remove('bg-primary', 'text-on-primary');
+          b.classList.add('bg-surface-container', 'text-on-surface-variant');
+        });
+        button.classList.remove('bg-surface-container', 'text-on-surface-variant');
+        button.classList.add('bg-primary', 'text-on-primary');
+      });
+    });
+  </script>
+</div></main></div></body></html>
