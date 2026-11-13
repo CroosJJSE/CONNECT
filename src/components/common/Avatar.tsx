@@ -1,21 +1,8 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { getLevelFrameStyle } from '../../domain/logic/pointsRules';
+import { useMemberLevels, MemberLevelProvider } from '../../hooks/memberLevelContext';
 
-const MemberLevelContext = createContext<Record<string, number>>({});
-
-export function MemberLevelProvider({
-  levelsByUserId,
-  children,
-}: {
-  levelsByUserId: Record<string, number>;
-  children: ReactNode;
-}) {
-  return (
-    <MemberLevelContext.Provider value={levelsByUserId}>
-      {children}
-    </MemberLevelContext.Provider>
-  );
-}
+export { MemberLevelProvider };
 
 interface AvatarProps {
   src?: string;
@@ -66,7 +53,7 @@ export function Avatar({
   showLevelTag,
 }: AvatarProps) {
   const [imgFailed, setImgFailed] = useState(false);
-  const levelsMap = useContext(MemberLevelContext);
+  const levelsMap = useMemberLevels();
   const resolvedLevel = Math.max(
     1,
     Math.floor(level ?? (userId ? levelsMap[userId] ?? 1 : 1))

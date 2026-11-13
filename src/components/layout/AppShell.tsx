@@ -16,7 +16,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { calculateLevelFromPoints, getLevelFrameStyle } from '../../domain/logic/pointsRules';
 import { useAuth } from '../../hooks/useAuth';
 import { useConnectData } from '../../hooks/useConnectData';
-import { STITCH_ASSETS } from '../../services/mock/seedData';
 import { Avatar } from '../common/Avatar';
 
 export type AppRoute = 'home' | 'sharing' | 'orbit' | 'events' | 'finance' | 'profile';
@@ -113,11 +112,10 @@ export function AppShell({
           >
             {!logoFailed ? (
               <img
-                src={STITCH_ASSETS.brandEmblemUrl}
+                src="/emblem.png"
                 alt="CONNECT logo"
-                referrerPolicy="no-referrer"
                 onError={() => setLogoFailed(true)}
-                className="w-9 h-9 rounded-lg object-cover bg-primary-fixed shrink-0"
+                className="w-11 h-11 rounded-lg object-contain bg-surface-container-lowest shrink-0"
               />
             ) : (
               <div className="w-9 h-9 rounded-lg bg-primary-fixed text-primary font-bold text-sm flex items-center justify-center shrink-0">
@@ -194,9 +192,9 @@ export function AppShell({
             <button
               type="button"
               onClick={() => onNavigate('home')}
-              className="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-semibold text-sm shadow-xs shrink-0"
+              className="w-11 h-11 rounded-lg bg-surface-container-lowest flex items-center justify-center shadow-xs shrink-0 overflow-hidden"
             >
-              GCF
+              <img src="/emblem.png" alt="" className="w-11 h-11 object-contain" />
             </button>
             <h1 className="text-base font-semibold text-on-surface tracking-tight truncate">
               {ROUTE_TITLES[activeRoute]}

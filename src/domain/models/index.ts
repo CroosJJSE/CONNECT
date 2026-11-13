@@ -3,6 +3,7 @@ export * from './user';
 export * from './post';
 export * from './sharing';
 export * from './orbit';
+export * from './memory';
 export * from './event';
 export * from './finance';
 export * from './media';

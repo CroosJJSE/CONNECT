@@ -3,6 +3,10 @@
  * In React Native / Expo, replace this adapter with AsyncStorage.
  */
 
+export async function hydratePlatformStorage(): Promise<void> {
+  // Browser localStorage is synchronous; nothing to preload.
+}
+
 export const platformStorage = {
   getItem(key: string): string | null {
     try {

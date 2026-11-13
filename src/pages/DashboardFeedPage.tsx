@@ -85,7 +85,7 @@ export function DashboardFeedPage({
   const [selectedCategory, setSelectedCategory] = useState<PostCategory>('General Update');
   const [audienceType, setAudienceType] = useState<PostAudienceType>('communities');
   const [selectedCommunityIds, setSelectedCommunityIds] = useState<string[]>(() =>
-    user?.communityIds.slice(0, 1) ?? ['lotus-grove']
+    user?.communityIds.slice(0, 1) ?? ['gcf-hub']
   );
   const [attachedDriveMedia, setAttachedDriveMedia] = useState<DriveMediaMetadata | null>(null);
   const [composerError, setComposerError] = useState<string | null>(null);

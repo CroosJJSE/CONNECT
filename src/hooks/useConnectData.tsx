@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { MemberLevelProvider } from '../components/common/Avatar';
+import { MemberLevelProvider } from './memberLevelContext';
 import {
   calculateLevelFromPoints,
   countDailyActiveAwards,
@@ -16,6 +16,9 @@ import type {
   FinanceTransaction,
   InterestGroup,
   MediaVisibility,
+  MemoryComment,
+  MemoryPost,
+  MemorySaveInput,
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
@@ -63,6 +66,8 @@ interface ConnectDataContextValue {
   interestGroups: InterestGroup[];
   notifications: NotificationItem[];
   orbitConnections: OrbitConnection[];
+  memories: MemoryPost[];
+  memoryComments: MemoryComment[];
   posts: Post[];
   sharingItems: SharingItem[];
   sharingRequests: SharingRequest[];
@@ -110,6 +115,9 @@ interface ConnectDataContextValue {
 
   addToOrbit: (friendUserId: string, note?: string) => Promise<void>;
   removeFromOrbit: (friendUserId: string) => Promise<void>;
+  saveMemory: (input: MemorySaveInput, existingId?: string) => Promise<MemoryPost | null>;
+  deleteMemory: (memoryId: string) => Promise<void>;
+  addMemoryComment: (memoryId: string, body: string) => Promise<void>;
 
   createEvent: (input: Omit<CreateEventInput, 'host'>) => Promise<void>;
   setRsvp: (eventId: string, status: RsvpStatus) => Promise<void>;
@@ -151,6 +159,8 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
   const [interestGroups, setInterestGroups] = useState<InterestGroup[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [orbitConnections, setOrbitConnections] = useState<OrbitConnection[]>([]);
+  const [memories, setMemories] = useState<MemoryPost[]>([]);
+  const [memoryComments, setMemoryComments] = useState<MemoryComment[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [sharingItems, setSharingItems] = useState<SharingItem[]>([]);
   const [sharingRequests, setSharingRequests] = useState<SharingRequest[]>([]);
@@ -272,6 +282,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
           notifs,
           orbitList,
           orbitMap,
+          memoryList,
           items,
           reqs,
           skills,
@@ -296,6 +307,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
           services.community.getNotifications(),
           services.orbit.getOrbitConnections(user.uid),
           services.orbit.getOrbitMembersByOwnerMap(),
+          services.memories.listMemories(user.uid),
           services.sharing.getItems(includeDonatedArchive),
           services.sharing.getRequests(),
           services.sharing.getSkillOffers(),
@@ -322,6 +334,11 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         setInterestGroups(groups);
         setNotifications(notifs);
         setOrbitConnections(orbitList);
+        setMemories(memoryList);
+        const comments = (
+          await Promise.all(memoryList.map((memory) => services.memories.listComments(memory.id)))
+        ).flat();
+        setMemoryComments(comments);
         setPosts(authorizedPosts);
         setSharingItems(items);
         setSharingRequests(reqs);
@@ -731,6 +748,51 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     [user, reloadFeed, notifySuccess, notifyError]
   );
 
+  const saveMemory = useCallback(
+    async (input: MemorySaveInput, existingId?: string) => {
+      if (!user) return null;
+      try {
+        const saved = await services.memories.saveMemory(user.uid, input, existingId);
+        const list = await services.memories.listMemories(user.uid);
+        setMemories(list);
+        notifySuccess(input.status === 'draft' ? 'Draft saved.' : 'Memory committed.');
+        return saved;
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Could not save this memory.');
+        return null;
+      }
+    },
+    [user, notifySuccess, notifyError]
+  );
+
+  const deleteMemory = useCallback(
+    async (memoryId: string) => {
+      if (!user) return;
+      try {
+        await services.memories.deleteMemory(user.uid, memoryId);
+        setMemories((prev) => prev.filter((memory) => memory.id !== memoryId));
+        setMemoryComments((prev) => prev.filter((comment) => comment.memoryId !== memoryId));
+        notifySuccess('Memory removed from your archive.');
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Could not delete this memory.');
+      }
+    },
+    [user, notifySuccess, notifyError]
+  );
+
+  const addMemoryComment = useCallback(
+    async (memoryId: string, body: string) => {
+      if (!user) return;
+      try {
+        const comment = await services.memories.addComment(memoryId, user, body);
+        setMemoryComments((prev) => [...prev, comment]);
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Could not add comment.');
+      }
+    },
+    [user, notifyError]
+  );
+
   const createEvent = useCallback(
     async (input: Omit<CreateEventInput, 'host'>) => {
       if (!user) return;
@@ -1029,6 +1091,8 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         interestGroups,
         notifications,
         orbitConnections,
+        memories,
+        memoryComments,
         posts,
         sharingItems,
         sharingRequests,
@@ -1072,6 +1136,9 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         toggleSkillOfferActive,
         addToOrbit,
         removeFromOrbit,
+        saveMemory,
+        deleteMemory,
+        addMemoryComment,
         createEvent,
         setRsvp,
         inviteToEvent,

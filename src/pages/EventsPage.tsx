@@ -58,7 +58,7 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [category, setCategory] = useState('Potluck & Dinner');
-  const [communityId, setCommunityId] = useState('lotus-grove');
+  const [communityId, setCommunityId] = useState(user?.communityIds[0] ?? 'gcf-hub');
   const [dateStr, setDateStr] = useState('2026-11-22');
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('20:00');

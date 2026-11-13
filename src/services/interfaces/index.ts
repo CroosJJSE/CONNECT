@@ -10,6 +10,9 @@ import type {
   FinanceTransaction,
   InterestGroup,
   MediaVisibility,
+  MemoryComment,
+  MemoryPost,
+  MemorySaveInput,
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
@@ -122,6 +125,15 @@ export interface IOrbitRepository {
   getOrbitMembersByOwnerMap(): Promise<Record<string, string[]>>;
   addToOrbit(ownerId: string, friendUserId: string, note?: string): Promise<OrbitConnection[]>;
   removeFromOrbit(ownerId: string, friendUserId: string): Promise<OrbitConnection[]>;
+}
+
+export interface IMemoryRepository {
+  listMemories(authorId: string): Promise<MemoryPost[]>;
+  getMemory(id: string): Promise<MemoryPost | null>;
+  saveMemory(authorId: string, input: MemorySaveInput, existingId?: string): Promise<MemoryPost>;
+  deleteMemory(authorId: string, memoryId: string): Promise<void>;
+  listComments(memoryId: string): Promise<MemoryComment[]>;
+  addComment(memoryId: string, author: UserProfile, body: string): Promise<MemoryComment>;
 }
 
 export interface CreateEventInput {

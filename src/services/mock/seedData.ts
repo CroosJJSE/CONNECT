@@ -8,6 +8,8 @@ import type {
   EventRsvpLog,
   FinanceTransaction,
   InterestGroup,
+  MemoryComment,
+  MemoryPost,
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
@@ -21,8 +23,7 @@ import type {
 } from '../../domain/models';
 
 export const STITCH_ASSETS = {
-  brandEmblemUrl:
-    'https://lh3.googleusercontent.com/aida/AEtjO1UaB0fKoWrp1yXSwRcwQ9mkYdT3La0CoWUtI6gfMTveL6yZaV2YPKqOj-GOXY0Xz4-o76-rLGAHwuiO4d9Xf-bKwvqvkiRW1Qd8q11qVvQv7VTIx5-WRS10h0yV1AHvywoXXeXCjtGSm3uLvdK05tx6gLBgt_VIFU4qmG0tx8j3fQZoX54SFjYc-nRuuK_tedzfs0ZFhW1lltusfsHjO0o0gr1X1tuqaeALQSvz4w9Y5uPHseiYhDTjMQ',
+  brandEmblemUrl: '/logo.jpeg',
   elenaAvatarUrl:
     'https://lh3.googleusercontent.com/aida-public/AB6AXuBHszmGUMuOGJJt6oYoXoHG6ZOVbMdBHQf064aYT4MfacSEVJee4IdwEIKlsswagKslfUc1vwexAXa-pngb4PMCBUbTgQ3czo7NSKgq_ledN5i-nufVt5OJf7i93nlziyTZJgA5AffFPCvSp1EmjRU50ubNsjNGEFIU1G5dq4fA-tqpZqXR4xjm03m4IkBkwakhSqEPfEnmy1Pr8VywW9Bw6-JPZiv_OmvK36SiINzLtpUsS5V5iq5c',
   potluckBannerUrl:
@@ -1493,5 +1494,122 @@ export const SEED_NOTIFICATIONS: NotificationItem[] = [
     createdAtIso: '2026-11-09T12:00:00.000Z',
     read: true,
     route: 'orbit',
+  },
+];
+
+export const SEED_MEMORIES: MemoryPost[] = [
+  {
+    id: 'mem-rooftop-harvest',
+    authorId: 'user-elena',
+    createdAtIso: '2026-11-08T09:00:00.000Z',
+    eventDateIso: '2026-11-08T12:00:00.000Z',
+    chapter: 'Garden years',
+    mood: 'Grateful',
+    status: 'published',
+    title: 'Saturday harvest on the rooftop',
+    description: 'Tomatoes, mint, and a quiet hour before the potluck. @Marcus L. brought extra baskets.',
+    media: [
+      {
+        url: STITCH_ASSETS.rooftopGardenUrl,
+        bytes: 420000,
+        kind: 'image',
+        fileId: 'seed-rooftop',
+      },
+    ],
+    audio: [],
+    privateText: 'I want to keep this feeling of enough.',
+    location: {
+      name: 'Havelock Terrace rooftop, Colombo',
+      lat: 6.8864,
+      lng: 79.8681,
+      district: 'Colombo',
+    },
+    weather: { temp: 29, condition: 'Cloudy', stringRepresentation: '☁️ 29°C Cloudy' },
+    taggedIds: ['user-marcus'],
+  },
+  {
+    id: 'mem-potluck',
+    authorId: 'user-elena',
+    createdAtIso: '2026-10-12T18:00:00.000Z',
+    eventDateIso: '2026-10-12T18:30:00.000Z',
+    chapter: 'Community table',
+    mood: 'Happy',
+    status: 'published',
+    title: 'Lotus Grove potluck under the trees',
+    description: 'Neighbors stayed until the lanterns came on. Kids ran the whole length of the garden path.',
+    media: [
+      {
+        url: STITCH_ASSETS.potluckBannerUrl,
+        bytes: 510000,
+        kind: 'image',
+        fileId: 'seed-potluck',
+      },
+    ],
+    audio: [],
+    privateText: '',
+    location: {
+      name: 'Lotus Grove garden, Havelock',
+      lat: 6.8871,
+      lng: 79.8694,
+      district: 'Colombo',
+    },
+    weather: { temp: 27, condition: 'Clear', stringRepresentation: '☀️ 27°C Clear' },
+    taggedIds: [],
+  },
+  {
+    id: 'mem-galle',
+    authorId: 'user-elena',
+    createdAtIso: '2025-12-28T16:00:00.000Z',
+    eventDateIso: '2025-12-28T16:00:00.000Z',
+    chapter: 'Coast days',
+    mood: 'Calm',
+    status: 'published',
+    title: 'Late light on the fort wall',
+    description: 'Walked the ramparts after rain. The sea was loud and the city felt small in a good way.',
+    media: [],
+    audio: [],
+    privateText: '',
+    location: {
+      name: 'Galle Fort, Southern Province',
+      lat: 6.026,
+      lng: 80.2168,
+      district: 'Galle',
+    },
+    weather: { temp: 26, condition: 'Showers', stringRepresentation: '🌦️ 26°C Showers' },
+    taggedIds: [],
+  },
+  {
+    id: 'mem-draft-kandy',
+    authorId: 'user-elena',
+    createdAtIso: '2026-11-11T21:00:00.000Z',
+    eventDateIso: '2026-11-11T12:00:00.000Z',
+    chapter: 'Hill country',
+    mood: 'Deep Thinking',
+    status: 'draft',
+    title: 'Notes from the Kandy overnight',
+    description: 'Still deciding which photos to keep. The mist over the lake at dawn.',
+    media: [],
+    audio: [],
+    privateText: 'I was tired and grateful at the same time.',
+    location: {
+      name: 'Kandy Lake, Central Province',
+      lat: 7.2906,
+      lng: 80.6337,
+      district: 'Kandy',
+    },
+    weather: { temp: 22, condition: 'Fog', stringRepresentation: '🌫️ 22°C Fog' },
+    taggedIds: [],
+  },
+];
+
+export const SEED_MEMORY_COMMENTS: MemoryComment[] = [
+  {
+    id: 'mcom-1',
+    memoryId: 'mem-rooftop-harvest',
+    authorId: 'user-marcus',
+    authorName: 'Marcus L.',
+    authorInitials: 'ML',
+    body: 'Those mint leaves made the lemonade. Proud of this bed.',
+    createdAtIso: '2026-11-08T14:20:00.000Z',
   },
 ];

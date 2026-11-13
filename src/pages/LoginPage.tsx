@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { Shield, Users, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { STITCH_ASSETS } from '../services/mock/seedData';
 import { ModalSheet } from '../components/common/ModalSheet';
 
 export function LoginPage() {
-  const { signInWithGoogle, demoAccounts, loading, error } = useAuth();
-  const [selectedUid, setSelectedUid] = useState<string>('user-elena');
+  const { signInWithGoogle, loading, error } = useAuth();
   const [emblemFailed, setEmblemFailed] = useState(false);
   const [infoSheet, setInfoSheet] = useState<'help' | 'privacy' | 'terms' | null>(null);
 
@@ -25,17 +23,16 @@ export function LoginPage() {
         {/* Brand Emblem with Ambient Glow */}
         <div className="relative flex items-center justify-center mb-6">
           <div className="absolute -inset-3 bg-secondary-fixed/40 rounded-full blur-xl pointer-events-none" />
-          <div className="relative w-24 h-24 rounded-full bg-surface-container-lowest shadow-md flex items-center justify-center p-3">
+          <div className="relative w-full max-w-[340px] aspect-[342/393] flex items-center justify-center">
             {!emblemFailed ? (
               <img
-                src={STITCH_ASSETS.brandEmblemUrl}
-                alt="CONNECT Community Emblem"
-                referrerPolicy="no-referrer"
+                src="/logo.jpeg"
+                alt="Graduate Christian Fellowship"
                 onError={() => setEmblemFailed(true)}
-                className="w-full h-full object-contain rounded-full"
+                className="w-full h-full object-contain"
               />
             ) : (
-              <div className="w-full h-full rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-xl">
+              <div className="w-24 h-24 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-xl">
                 GCF
               </div>
             )}
@@ -59,27 +56,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* Member Role Preview Picker for local verification */}
-        {demoAccounts.length > 0 && (
-          <div className="w-full mb-4">
-            <label htmlFor="member-preview-select" className="block text-xs font-medium text-on-surface-variant mb-1.5">
-              Sign in as member profile
-            </label>
-            <select
-              id="member-preview-select"
-              value={selectedUid}
-              onChange={(e) => setSelectedUid(e.target.value)}
-              className="w-full min-h-[44px] px-3 rounded-xl bg-surface-container-lowest border border-outline-variant/60 text-sm text-on-surface focus:outline-none focus:border-primary"
-            >
-              {demoAccounts.map((acc) => (
-                <option key={acc.uid} value={acc.uid}>
-                  {acc.displayName} ({acc.role === 'admin' ? 'Community Admin' : acc.role === 'steward' ? 'Steward' : 'Member'})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {error && (
           <div className="w-full mb-4 px-3.5 py-2.5 rounded-xl bg-error-container text-on-error-container text-xs font-medium">
             {error}
@@ -91,7 +67,7 @@ export function LoginPage() {
           <button
             type="button"
             disabled={loading}
-            onClick={() => void signInWithGoogle(selectedUid)}
+            onClick={() => void signInWithGoogle()}
             className="w-full min-h-[52px] bg-surface-container-lowest hover:bg-surface-container-low active:scale-[0.99] text-on-surface text-base font-medium rounded-xl shadow-sm flex items-center justify-center gap-3 px-4 transition-all disabled:opacity-60 border border-outline-variant/30"
           >
             <svg aria-hidden="true" className="w-5 h-5 shrink-0" viewBox="0 0 24 24">

@@ -1,6 +1,13 @@
 # Android Migration Guide (React Native + Expo)
 
-This codebase is structured so **Cursor** (or another AI coding agent) can share core TypeScript modules between this **Mobile-First Web App** and a future **React Native + Expo Android App** (`apps/mobile` or monorepo `packages/core`).
+This codebase is structured so **Cursor** (or another AI coding agent) can share core TypeScript modules between this **Mobile-First Web App** and the **React Native + Expo Android App** in `apps/mobile`.
+
+Run the Android client:
+
+```bash
+cd apps/mobile
+npm start
+```
 
 ## 1. Directly Portable Modules (Zero DOM / Browser APIs)
 

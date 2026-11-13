@@ -29,6 +29,9 @@ import type {
   FinanceTransaction,
   InterestGroup,
   MediaVisibility,
+  MemoryComment,
+  MemoryPost,
+  MemorySaveInput,
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
@@ -64,6 +67,7 @@ import type {
   IFeedRepository,
   IFinanceRepository,
   IMediaStorageService,
+  IMemoryRepository,
   IOrbitRepository,
   IPointsRepository,
   ISharingRepository,
@@ -80,6 +84,8 @@ import {
   SEED_EVENTS,
   SEED_GOALS,
   SEED_GROUPS,
+  SEED_MEMORIES,
+  SEED_MEMORY_COMMENTS,
   SEED_NOTIFICATIONS,
   SEED_ORBIT_CONNECTIONS,
   SEED_POINT_TRANSACTIONS,
@@ -103,6 +109,8 @@ interface PersistedMockState {
   groups: InterestGroup[];
   notifications: NotificationItem[];
   orbitConnections: OrbitConnection[];
+  memories: MemoryPost[];
+  memoryComments: MemoryComment[];
   posts: Post[];
   sharingItems: SharingItem[];
   sharingRequests: SharingRequest[];
@@ -130,6 +138,8 @@ function createInitialState(): PersistedMockState {
     groups: structuredClone(SEED_GROUPS),
     notifications: structuredClone(SEED_NOTIFICATIONS),
     orbitConnections: structuredClone(SEED_ORBIT_CONNECTIONS),
+    memories: structuredClone(SEED_MEMORIES),
+    memoryComments: structuredClone(SEED_MEMORY_COMMENTS),
     posts: structuredClone(SEED_POSTS),
     sharingItems: structuredClone(SEED_SHARING_ITEMS),
     sharingRequests: structuredClone(SEED_SHARING_REQUESTS),
@@ -149,9 +159,10 @@ function createInitialState(): PersistedMockState {
 }
 
 class InMemoryStateStore {
-  private state: PersistedMockState;
+  private state: PersistedMockState | null = null;
 
-  constructor() {
+  private load(): PersistedMockState {
+    if (this.state) return this.state;
     const raw = platformStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
@@ -223,21 +234,26 @@ class InMemoryStateStore {
           pointsConfig,
           pointTransactions,
           eventRsvpLogs,
+          memories: Array.isArray(parsed.memories) ? parsed.memories : defaults.memories,
+          memoryComments: Array.isArray(parsed.memoryComments)
+            ? parsed.memoryComments
+            : defaults.memoryComments,
         };
-        return;
+        return this.state;
       } catch {
         // Fallback to clean seed state if storage corrupted
       }
     }
     this.state = createInitialState();
-  }
-
-  get(): PersistedMockState {
     return this.state;
   }
 
+  get(): PersistedMockState {
+    return this.load();
+  }
+
   save(): void {
-    platformStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    platformStorage.setItem(STORAGE_KEY, JSON.stringify(this.load()));
   }
 }
 
@@ -658,6 +674,76 @@ export class MockOrbitRepository implements IOrbitRepository {
     );
     store.save();
     return this.getOrbitConnections(ownerId);
+  }
+}
+
+export class MockMemoryRepository implements IMemoryRepository {
+  async listMemories(authorId: string): Promise<MemoryPost[]> {
+    return store
+      .get()
+      .memories.filter((memory) => memory.authorId === authorId)
+      .sort((a, b) => (b.eventDateIso ?? b.createdAtIso).localeCompare(a.eventDateIso ?? a.createdAtIso));
+  }
+
+  async getMemory(id: string): Promise<MemoryPost | null> {
+    return store.get().memories.find((memory) => memory.id === id) ?? null;
+  }
+
+  async saveMemory(authorId: string, input: MemorySaveInput, existingId?: string): Promise<MemoryPost> {
+    const s = store.get();
+    const now = new Date().toISOString();
+    if (existingId) {
+      const index = s.memories.findIndex((memory) => memory.id === existingId && memory.authorId === authorId);
+      if (index < 0) throw new Error('Memory not found.');
+      const next: MemoryPost = { ...s.memories[index], ...input, id: existingId, authorId };
+      s.memories[index] = next;
+      store.save();
+      return next;
+    }
+    const created: MemoryPost = {
+      id: nextId('mem'),
+      authorId,
+      createdAtIso: now,
+      ...input,
+    };
+    s.memories = [created, ...s.memories];
+    store.save();
+    return created;
+  }
+
+  async deleteMemory(authorId: string, memoryId: string): Promise<void> {
+    const s = store.get();
+    const found = s.memories.find((memory) => memory.id === memoryId);
+    if (!found || found.authorId !== authorId) throw new Error('Memory not found.');
+    s.memories = s.memories.filter((memory) => memory.id !== memoryId);
+    s.memoryComments = s.memoryComments.filter((comment) => comment.memoryId !== memoryId);
+    store.save();
+  }
+
+  async listComments(memoryId: string): Promise<MemoryComment[]> {
+    return store
+      .get()
+      .memoryComments.filter((comment) => comment.memoryId === memoryId)
+      .sort((a, b) => a.createdAtIso.localeCompare(b.createdAtIso));
+  }
+
+  async addComment(memoryId: string, author: UserProfile, body: string): Promise<MemoryComment> {
+    const text = body.trim();
+    if (!text) throw new Error('Write a comment first.');
+    const comment: MemoryComment = {
+      id: nextId('mcom'),
+      memoryId,
+      authorId: author.uid,
+      authorName: author.displayName,
+      authorInitials: author.initials,
+      authorAvatarUrl: author.avatarUrl,
+      body: text,
+      createdAtIso: new Date().toISOString(),
+    };
+    const s = store.get();
+    s.memoryComments = [...s.memoryComments, comment];
+    store.save();
+    return comment;
   }
 }
 

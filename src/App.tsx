@@ -27,9 +27,11 @@ function AuthenticatedWorkspace() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary-fixed text-primary font-bold flex items-center justify-center animate-pulse">
-            GCF
-          </div>
+          <img
+            src="/emblem.png"
+            alt="Graduate Christian Fellowship"
+            className="w-28 h-28 object-contain animate-pulse"
+          />
           <p className="text-sm text-on-surface-variant font-medium">Loading CONNECT…</p>
         </div>
       </div>

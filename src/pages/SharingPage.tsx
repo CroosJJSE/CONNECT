@@ -90,7 +90,7 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
   const [itemCategory, setItemCategory] = useState<SharingCategory>('Tools & Garden');
   const [itemMode, setItemMode] = useState<SharingMode>('lend');
   const [durationDays, setDurationDays] = useState('7');
-  const [selectedCommunityId, setSelectedCommunityId] = useState('lotus-grove');
+  const [selectedCommunityId, setSelectedCommunityId] = useState(user?.communityIds[0] ?? 'gcf-hub');
   const [itemDriveMedia, setItemDriveMedia] = useState<DriveMediaMetadata | null>(null);
 
   // I Need form state
