@@ -19,6 +19,7 @@ export interface UserProfile {
   driveAppFolderId?: string;
   calendarConnected: boolean;
   financeEnabled: boolean;
+  points: number;
 }
 
 export interface Community {

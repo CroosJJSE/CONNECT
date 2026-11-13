@@ -7,6 +7,7 @@ import type {
   IFinanceRepository,
   IMediaStorageService,
   IOrbitRepository,
+  IPointsRepository,
   ISharingRepository,
   ISmsIngestionBridge,
 } from './interfaces';
@@ -19,6 +20,7 @@ import {
   MockFeedRepository,
   MockFinanceRepository,
   MockOrbitRepository,
+  MockPointsRepository,
   MockSharingRepository,
   WebNoopSmsIngestionBridge,
 } from './mock/mockRepositories';
@@ -34,6 +36,7 @@ export interface ServiceRegistry {
   media: IMediaStorageService;
   calendar: ICalendarService;
   smsBridge: ISmsIngestionBridge;
+  points: IPointsRepository;
 }
 
 export const services: ServiceRegistry = {
@@ -47,4 +50,5 @@ export const services: ServiceRegistry = {
   media: new MockDriveMediaService(),
   calendar: new MockCalendarService(),
   smsBridge: new WebNoopSmsIngestionBridge(),
+  points: new MockPointsRepository(),
 };

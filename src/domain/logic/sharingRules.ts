@@ -76,8 +76,9 @@ export function markLentItemReturned(params: {
 export function offerHelpOnRequest(params: {
   request: SharingRequest;
   helperName: string;
+  helperUserId?: string;
 }): SharingRequest {
-  const { request, helperName } = params;
+  const { request, helperName, helperUserId } = params;
   if (request.status === 'closed') {
     throw new Error('This request has already been closed.');
   }
@@ -85,10 +86,40 @@ export function offerHelpOnRequest(params: {
     ? request.helperNames
     : [...request.helperNames, helperName];
 
+  const existingIds = request.helperUserIds ?? [];
+  const helperUserIds =
+    helperUserId && !existingIds.includes(helperUserId)
+      ? [...existingIds, helperUserId]
+      : existingIds;
+
   return {
     ...request,
     status: 'in_progress',
     helperNames,
+    helperUserIds,
+  };
+}
+
+export function verifyHelperOnRequest(params: {
+  request: SharingRequest;
+  helperUserId: string;
+  actorUserId: string;
+  actorIsAdmin?: boolean;
+}): SharingRequest {
+  const { request, helperUserId, actorUserId, actorIsAdmin = false } = params;
+  if (request.requesterId !== actorUserId && !actorIsAdmin) {
+    throw new Error('Only the requester or an admin can verify a helpful contribution.');
+  }
+  if (helperUserId === request.requesterId) {
+    throw new Error('You cannot verify your own contribution on your own request.');
+  }
+  const verified = request.verifiedHelperIds ?? [];
+  if (verified.includes(helperUserId)) {
+    throw new Error('This neighbor has already been verified for this request.');
+  }
+  return {
+    ...request,
+    verifiedHelperIds: [...verified, helperUserId],
   };
 }
 

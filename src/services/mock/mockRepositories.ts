@@ -3,24 +3,39 @@ import { categorizeTransaction } from '../../domain/logic/financeCategorizer';
 import { deriveInitials } from '../../domain/logic/formatting';
 import { extractMentionedUsers } from '../../domain/logic/mentions';
 import {
+  calculateLevelFromPoints,
+  countDailyActiveAwards,
+  createDefaultPointsConfiguration,
+  DEFAULT_POINT_RULES,
+  getLevelFrameStyle,
+  reconcilePointsFromLedger,
+} from '../../domain/logic/pointsRules';
+import {
   borrowOrClaimItem,
   closeSharingRequest,
   isItemVisibleInAvailableMarketplace,
   markLentItemReturned,
   offerHelpOnRequest,
+  verifyHelperOnRequest,
 } from '../../domain/logic/sharingRules';
 import type {
   Community,
   CommunityAnnouncement,
   CommunityEvent,
   CommunityPoll,
+  ConfigurablePointActivityType,
   DriveMediaMetadata,
+  EventRsvpLog,
   FinanceTransaction,
   InterestGroup,
   MediaVisibility,
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
+  PointActivityType,
+  PointRelatedEntityType,
+  PointsConfiguration,
+  PointTransaction,
   Post,
   RsvpStatus,
   SavingsGoal,
@@ -33,6 +48,7 @@ import { buildDriveViewerUrl, CONNECT_DRIVE_FOLDER_NAME } from '../google/google
 import { generateIcsContent } from '../google/googleCalendarService';
 import { workspaceTokenStore } from '../google/workspaceTokenStore';
 import type {
+  AdminPointAdjustmentInput,
   CalendarSyncResult,
   CreateEventInput,
   CreateEventTaskInput,
@@ -49,6 +65,7 @@ import type {
   IFinanceRepository,
   IMediaStorageService,
   IOrbitRepository,
+  IPointsRepository,
   ISharingRepository,
   ISmsIngestionBridge,
   UploadDriveMediaInput,
@@ -59,11 +76,13 @@ import {
   SEED_BUDGETS,
   SEED_COMMUNITIES,
   SEED_DRIVE_MEDIA,
+  SEED_EVENT_RSVP_LOGS,
   SEED_EVENTS,
   SEED_GOALS,
   SEED_GROUPS,
   SEED_NOTIFICATIONS,
   SEED_ORBIT_CONNECTIONS,
+  SEED_POINT_TRANSACTIONS,
   SEED_POLLS,
   SEED_POSTS,
   SEED_SHARING_ITEMS,
@@ -93,6 +112,9 @@ interface PersistedMockState {
   transactions: FinanceTransaction[];
   budgets: MonthlyBudget[];
   savingsGoals: SavingsGoal[];
+  pointsConfig: PointsConfiguration;
+  pointTransactions: PointTransaction[];
+  eventRsvpLogs: EventRsvpLog[];
   driveAuthorized: boolean;
   calendarAuthorized: boolean;
   calendarReminderMinutes: number;
@@ -117,6 +139,9 @@ function createInitialState(): PersistedMockState {
     transactions: structuredClone(SEED_TRANSACTIONS),
     budgets: structuredClone(SEED_BUDGETS),
     savingsGoals: structuredClone(SEED_GOALS),
+    pointsConfig: createDefaultPointsConfiguration('2026-11-10T08:00:00.000Z'),
+    pointTransactions: structuredClone(SEED_POINT_TRANSACTIONS),
+    eventRsvpLogs: structuredClone(SEED_EVENT_RSVP_LOGS),
     driveAuthorized: false,
     calendarAuthorized: false,
     calendarReminderMinutes: 60,
@@ -130,13 +155,74 @@ class InMemoryStateStore {
     const raw = platformStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as PersistedMockState;
-        this.state = {
-          ...parsed,
-          users: (parsed.users ?? []).map((u) => ({
-            ...u,
+        const parsed = JSON.parse(raw) as Partial<PersistedMockState>;
+        const defaults = createInitialState();
+        const pointTransactions =
+          Array.isArray(parsed.pointTransactions) && parsed.pointTransactions.length > 0
+            ? parsed.pointTransactions
+            : defaults.pointTransactions;
+        const eventRsvpLogs = Array.isArray(parsed.eventRsvpLogs)
+          ? parsed.eventRsvpLogs
+          : defaults.eventRsvpLogs;
+
+        const mergedRules = { ...structuredClone(DEFAULT_POINT_RULES) };
+        if (parsed.pointsConfig?.rules) {
+          for (const key of Object.keys(mergedRules) as ConfigurablePointActivityType[]) {
+            if (parsed.pointsConfig.rules[key]) {
+              mergedRules[key] = { ...mergedRules[key], ...parsed.pointsConfig.rules[key] };
+            }
+          }
+        }
+        const pointsConfig: PointsConfiguration = {
+          rules: mergedRules,
+          updatedAtIso: parsed.pointsConfig?.updatedAtIso ?? defaults.pointsConfig.updatedAtIso,
+          updatedByUserId: parsed.pointsConfig?.updatedByUserId,
+        };
+
+        const rawUsers = parsed.users ?? defaults.users;
+        const migratedUsers: UserProfile[] = rawUsers.map((u) => {
+          const legacy = u as UserProfile & {
+            currentPoints?: number;
+            lifetimePoints?: number;
+            level?: number;
+          };
+          const { currentPoints: _cp, lifetimePoints: _lp, level: _lvl, ...rest } = legacy;
+          const reconciledPoints = reconcilePointsFromLedger(u.uid, pointTransactions);
+          return {
+            ...rest,
             financeEnabled: Boolean(u.financeEnabled),
-          })),
+            points:
+              typeof legacy.points === 'number'
+                ? legacy.points
+                : typeof legacy.currentPoints === 'number'
+                  ? legacy.currentPoints
+                  : reconciledPoints,
+          };
+        });
+
+        const migratedRequests = (parsed.sharingRequests ?? defaults.sharingRequests).map((req) => {
+          if (req.helperUserIds && req.verifiedHelperIds) return req;
+          const resolvedHelperIds =
+            req.helperUserIds ??
+            req.helperNames
+              .map((name) => migratedUsers.find((u) => u.displayName === name)?.uid)
+              .filter((id): id is string => Boolean(id));
+          const seedMatch = defaults.sharingRequests.find((sr) => sr.id === req.id);
+          return {
+            ...req,
+            helperUserIds: resolvedHelperIds,
+            verifiedHelperIds: req.verifiedHelperIds ?? seedMatch?.verifiedHelperIds ?? [],
+          };
+        });
+
+        this.state = {
+          ...defaults,
+          ...parsed,
+          users: migratedUsers,
+          sharingRequests: migratedRequests,
+          pointsConfig,
+          pointTransactions,
+          eventRsvpLogs,
         };
         return;
       } catch {
@@ -159,6 +245,263 @@ const store = new InMemoryStateStore();
 
 function nextId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function getReversedTransactionIdSet(transactions: readonly PointTransaction[]): Set<string> {
+  return new Set(
+    transactions
+      .filter((t) => t.transactionType === 'reversal' && t.reversedTransactionId)
+      .map((t) => t.reversedTransactionId!)
+  );
+}
+
+function syncUserPointsFromLedger(
+  s: PersistedMockState,
+  memberId: string
+): { prevLevel: number; newLevel: number; points: number } {
+  const existing = s.users.find((u) => u.uid === memberId);
+  const prevLevel = calculateLevelFromPoints(existing?.points ?? 0);
+  const nextPoints = reconcilePointsFromLedger(memberId, s.pointTransactions);
+  s.users = s.users.map((u) =>
+    u.uid === memberId
+      ? {
+          ...u,
+          points: nextPoints,
+        }
+      : u
+  );
+  return {
+    prevLevel,
+    newLevel: calculateLevelFromPoints(nextPoints),
+    points: nextPoints,
+  };
+}
+
+function pushLevelUpNotificationIfNeeded(
+  s: PersistedMockState,
+  memberId: string,
+  prevLevel: number,
+  newLevel: number,
+  nowIso: string
+): void {
+  if (newLevel <= prevLevel) return;
+  const style = getLevelFrameStyle(newLevel);
+  s.notifications = [
+    {
+      id: nextId('notif'),
+      recipientUserId: memberId,
+      title: `Level Up! You reached Level ${newLevel}`,
+      message: `Your community contributions unlocked the ${style.tierName} profile frame.`,
+      createdAtIso: nowIso,
+      read: false,
+      route: 'profile',
+    },
+    ...s.notifications,
+  ];
+}
+
+function awardPointsForActivity(
+  s: PersistedMockState,
+  params: {
+    memberId: string;
+    activityType: ConfigurablePointActivityType;
+    description: string;
+    entityType: PointRelatedEntityType;
+    entityId: string;
+    entityTitle?: string;
+    actorUserId?: string;
+    nowIso: string;
+  }
+): { awarded: boolean; reason?: 'disabled' | 'daily_limit' | 'duplicate'; transaction?: PointTransaction } {
+  const rule = s.pointsConfig.rules[params.activityType];
+  if (!rule || !rule.enabled || rule.points <= 0) {
+    return { awarded: false, reason: 'disabled' };
+  }
+
+  if (rule.dailyLimit && rule.dailyLimit > 0) {
+    const todayCount = countDailyActiveAwards({
+      memberId: params.memberId,
+      activityType: params.activityType,
+      transactions: s.pointTransactions,
+      referenceIso: params.nowIso,
+    });
+    if (todayCount >= rule.dailyLimit) {
+      return { awarded: false, reason: 'daily_limit' };
+    }
+  }
+
+  const reversedIds = getReversedTransactionIdSet(s.pointTransactions);
+  const alreadyAwarded = s.pointTransactions.some(
+    (t) =>
+      t.memberId === params.memberId &&
+      t.activityType === params.activityType &&
+      t.transactionType === 'award' &&
+      !reversedIds.has(t.id) &&
+      (t.relatedPostId === params.entityId || t.relatedEventId === params.entityId)
+  );
+  if (alreadyAwarded) {
+    return { awarded: false, reason: 'duplicate' };
+  }
+
+  const pts = Math.round(rule.points);
+  const tx: PointTransaction = {
+    id: nextId('ptx'),
+    memberId: params.memberId,
+    activityType: params.activityType,
+    description: params.description,
+    transactionType: 'award',
+    points: pts,
+    relatedEntityType: params.entityType,
+    relatedPostId: params.entityType !== 'event' ? params.entityId : undefined,
+    relatedEventId: params.entityType === 'event' ? params.entityId : undefined,
+    relatedEntityTitle: params.entityTitle,
+    actorUserId: params.actorUserId,
+    createdAtIso: params.nowIso,
+  };
+  s.pointTransactions = [tx, ...s.pointTransactions];
+
+  const sync = syncUserPointsFromLedger(s, params.memberId);
+  pushLevelUpNotificationIfNeeded(s, params.memberId, sync.prevLevel, sync.newLevel, params.nowIso);
+
+  return { awarded: true, transaction: tx };
+}
+
+function reverseActivePointsForEntity(
+  s: PersistedMockState,
+  params: {
+    activityType: PointActivityType;
+    entityId: string;
+    actorUserId: string;
+    reason: string;
+    nowIso: string;
+    memberId?: string;
+  }
+): PointTransaction | null {
+  const reversedIds = getReversedTransactionIdSet(s.pointTransactions);
+  const target = s.pointTransactions.find(
+    (t) =>
+      t.activityType === params.activityType &&
+      t.transactionType === 'award' &&
+      !reversedIds.has(t.id) &&
+      (!params.memberId || t.memberId === params.memberId) &&
+      (t.relatedPostId === params.entityId || t.relatedEventId === params.entityId)
+  );
+  if (!target) return null;
+
+  const reversalTx: PointTransaction = {
+    id: nextId('ptx'),
+    memberId: target.memberId,
+    activityType: target.activityType,
+    description: `Reversed: ${target.description}`,
+    transactionType: 'reversal',
+    points: -Math.abs(target.points),
+    relatedEntityType: target.relatedEntityType,
+    relatedPostId: target.relatedPostId,
+    relatedEventId: target.relatedEventId,
+    relatedEntityTitle: target.relatedEntityTitle,
+    reversedTransactionId: target.id,
+    actorUserId: params.actorUserId,
+    reason: params.reason,
+    createdAtIso: params.nowIso,
+  };
+  s.pointTransactions = [reversalTx, ...s.pointTransactions];
+  syncUserPointsFromLedger(s, target.memberId);
+  return reversalTx;
+}
+
+function processEventRsvpLedgerChange(
+  s: PersistedMockState,
+  params: {
+    memberId: string;
+    event: CommunityEvent;
+    previousStatus?: RsvpStatus;
+    newStatus: RsvpStatus;
+    nowIso: string;
+  }
+): void {
+  const { memberId, event, previousStatus, newStatus, nowIso } = params;
+  if (previousStatus === newStatus) return;
+
+  const reversedIds = getReversedTransactionIdSet(s.pointTransactions);
+  let pointTransactionId: string | undefined;
+  let pointsDelta = 0;
+
+  if (previousStatus !== 'going' && newStatus === 'going') {
+    const priorAwards = s.pointTransactions.filter(
+      (t) =>
+        t.memberId === memberId &&
+        t.activityType === 'event_rsvp_yes' &&
+        t.transactionType === 'award' &&
+        t.relatedEventId === event.id
+    );
+    const hasActiveAward = priorAwards.some((t) => !reversedIds.has(t.id));
+
+    if (!hasActiveAward) {
+      const originalAward = priorAwards[priorAwards.length - 1];
+      if (originalAward) {
+        // Re-selecting Going after a reversal restores the original event points without duplicates
+        const reinstateTx: PointTransaction = {
+          id: nextId('ptx'),
+          memberId,
+          activityType: 'event_rsvp_yes',
+          description: `RSVP Going (reinstated): ${event.title}`,
+          transactionType: 'award',
+          points: originalAward.points,
+          relatedEntityType: 'event',
+          relatedEventId: event.id,
+          relatedEntityTitle: event.title,
+          reinstatedFromTransactionId: originalAward.id,
+          createdAtIso: nowIso,
+        };
+        s.pointTransactions = [reinstateTx, ...s.pointTransactions];
+        const sync = syncUserPointsFromLedger(s, memberId);
+        pushLevelUpNotificationIfNeeded(s, memberId, sync.prevLevel, sync.newLevel, nowIso);
+        pointTransactionId = reinstateTx.id;
+        pointsDelta = reinstateTx.points;
+      } else {
+        const res = awardPointsForActivity(s, {
+          memberId,
+          activityType: 'event_rsvp_yes',
+          description: `RSVP Going: ${event.title}`,
+          entityType: 'event',
+          entityId: event.id,
+          entityTitle: event.title,
+          nowIso,
+        });
+        if (res.transaction) {
+          pointTransactionId = res.transaction.id;
+          pointsDelta = res.transaction.points;
+        }
+      }
+    }
+  } else if (previousStatus === 'going' && newStatus !== 'going') {
+    const statusLabel = newStatus === 'maybe' ? 'Maybe' : "Can't go";
+    const reversal = reverseActivePointsForEntity(s, {
+      activityType: 'event_rsvp_yes',
+      entityId: event.id,
+      memberId,
+      actorUserId: memberId,
+      reason: `RSVP changed from Going to ${statusLabel}`,
+      nowIso,
+    });
+    if (reversal) {
+      pointTransactionId = reversal.id;
+      pointsDelta = reversal.points;
+    }
+  }
+
+  const rsvpLog: EventRsvpLog = {
+    id: nextId('rsvplog'),
+    eventId: event.id,
+    eventTitle: event.title,
+    memberId,
+    previousStatus,
+    newStatus,
+    pointTransactionId,
+    pointsDelta,
+    createdAtIso: nowIso,
+  };
+  s.eventRsvpLogs = [rsvpLog, ...s.eventRsvpLogs];
 }
 
 export class MockAuthService implements IAuthService {
@@ -397,6 +740,19 @@ export class MockFeedRepository implements IFeedRepository {
       }
     }
 
+    if (input.audienceType === 'communities' && newPost.content.length > 0) {
+      const snippet = newPost.content.slice(0, 48);
+      awardPointsForActivity(s, {
+        memberId: input.author.uid,
+        activityType: 'community_post_create',
+        description: `Created community post: "${snippet}${newPost.content.length > 48 ? '…' : ''}"`,
+        entityType: 'post',
+        entityId: newPost.id,
+        entityTitle: `${input.category} post`,
+        nowIso,
+      });
+    }
+
     store.save();
     return newPost;
   }
@@ -492,6 +848,14 @@ export class MockFeedRepository implements IFeedRepository {
       throw new Error('Only the author or a community admin can delete this post.');
     }
     s.posts = s.posts.filter((p) => p.id !== postId);
+    reverseActivePointsForEntity(s, {
+      activityType: 'community_post_create',
+      entityId: postId,
+      memberId: post.authorId,
+      actorUserId,
+      reason: 'Community post deleted',
+      nowIso: new Date().toISOString(),
+    });
     store.save();
   }
 
@@ -532,8 +896,37 @@ export class MockSharingRepository implements ISharingRepository {
     };
     const s = store.get();
     s.sharingItems = [newItem, ...s.sharingItems];
+    awardPointsForActivity(s, {
+      memberId: input.owner.uid,
+      activityType: 'i_have_create',
+      description: `Created "I Have" listing: ${newItem.title}`,
+      entityType: 'sharing_item',
+      entityId: newItem.id,
+      entityTitle: newItem.title,
+      nowIso,
+    });
     store.save();
     return newItem;
+  }
+
+  async deleteItem(itemId: string, actorUserId: string): Promise<void> {
+    const s = store.get();
+    const existing = s.sharingItems.find((i) => i.id === itemId);
+    if (!existing) return;
+    const actor = s.users.find((u) => u.uid === actorUserId);
+    if (existing.ownerId !== actorUserId && actor?.role !== 'admin') {
+      throw new Error('Only the owner or a community admin can delete this listing.');
+    }
+    s.sharingItems = s.sharingItems.filter((i) => i.id !== itemId);
+    reverseActivePointsForEntity(s, {
+      activityType: 'i_have_create',
+      entityId: itemId,
+      memberId: existing.ownerId,
+      actorUserId,
+      reason: '"I Have" listing deleted',
+      nowIso: new Date().toISOString(),
+    });
+    store.save();
   }
 
   async borrowOrClaimItem(itemId: string, actor: UserProfile): Promise<SharingItem> {
@@ -570,6 +963,7 @@ export class MockSharingRepository implements ISharingRepository {
   }
 
   async createRequest(input: CreateSharingRequestInput): Promise<SharingRequest> {
+    const nowIso = new Date().toISOString();
     const newReq: SharingRequest = {
       id: nextId('req'),
       requesterId: input.requester.uid,
@@ -581,21 +975,109 @@ export class MockSharingRepository implements ISharingRepository {
       requiredDuration: input.requiredDuration.trim(),
       status: 'open',
       helperNames: [],
+      helperUserIds: [],
+      verifiedHelperIds: [],
       driveMediaId: input.driveMediaId,
-      createdAtIso: new Date().toISOString(),
+      createdAtIso: nowIso,
     };
     const s = store.get();
     s.sharingRequests = [newReq, ...s.sharingRequests];
+    awardPointsForActivity(s, {
+      memberId: input.requester.uid,
+      activityType: 'i_need_create',
+      description: `Created "I Need" request: ${newReq.title}`,
+      entityType: 'sharing_request',
+      entityId: newReq.id,
+      entityTitle: newReq.title,
+      nowIso,
+    });
     store.save();
     return newReq;
   }
 
-  async offerHelp(requestId: string, helperName: string): Promise<SharingRequest> {
+  async deleteRequest(requestId: string, actorUserId: string): Promise<void> {
+    const s = store.get();
+    const existing = s.sharingRequests.find((r) => r.id === requestId);
+    if (!existing) return;
+    const actor = s.users.find((u) => u.uid === actorUserId);
+    if (existing.requesterId !== actorUserId && actor?.role !== 'admin') {
+      throw new Error('Only the requester or a community admin can delete this request.');
+    }
+    s.sharingRequests = s.sharingRequests.filter((r) => r.id !== requestId);
+    reverseActivePointsForEntity(s, {
+      activityType: 'i_need_create',
+      entityId: requestId,
+      memberId: existing.requesterId,
+      actorUserId,
+      reason: '"I Need" request deleted',
+      nowIso: new Date().toISOString(),
+    });
+    store.save();
+  }
+
+  async offerHelp(requestId: string, helperName: string, helperUserId?: string): Promise<SharingRequest> {
     const s = store.get();
     const existing = s.sharingRequests.find((r) => r.id === requestId);
     if (!existing) throw new Error('Request not found.');
-    const updated = offerHelpOnRequest({ request: existing, helperName });
+    const resolvedHelperId =
+      helperUserId ?? s.users.find((u) => u.displayName === helperName)?.uid;
+    const updated = offerHelpOnRequest({
+      request: existing,
+      helperName,
+      helperUserId: resolvedHelperId,
+    });
     s.sharingRequests = s.sharingRequests.map((r) => (r.id === requestId ? updated : r));
+    store.save();
+    return updated;
+  }
+
+  async verifyHelpfulContribution(
+    requestId: string,
+    helperUserId: string,
+    actor: UserProfile
+  ): Promise<SharingRequest> {
+    const s = store.get();
+    const existing = s.sharingRequests.find((r) => r.id === requestId);
+    if (!existing) throw new Error('Request not found.');
+    const helperUser = s.users.find((u) => u.uid === helperUserId);
+    if (!helperUser) throw new Error('Helper profile not found.');
+
+    const updated = verifyHelperOnRequest({
+      request: existing,
+      helperUserId,
+      actorUserId: actor.uid,
+      actorIsAdmin: actor.role === 'admin',
+    });
+    s.sharingRequests = s.sharingRequests.map((r) => (r.id === requestId ? updated : r));
+
+    const nowIso = new Date().toISOString();
+    const entityKey = `${requestId}:${helperUserId}`;
+    const res = awardPointsForActivity(s, {
+      memberId: helperUserId,
+      activityType: 'helpful_contribution',
+      description: `Verified helpful contribution: ${existing.title}`,
+      entityType: 'sharing_request',
+      entityId: entityKey,
+      entityTitle: existing.title,
+      actorUserId: actor.uid,
+      nowIso,
+    });
+
+    if (res.transaction) {
+      s.notifications = [
+        {
+          id: nextId('notif'),
+          recipientUserId: helperUserId,
+          title: `Helpful contribution verified (+${res.transaction.points} pts)`,
+          message: `${actor.displayName} verified your help on "${existing.title}".`,
+          createdAtIso: nowIso,
+          read: false,
+          route: 'profile',
+        },
+        ...s.notifications,
+      ];
+    }
+
     store.save();
     return updated;
   }
@@ -615,6 +1097,7 @@ export class MockSharingRepository implements ISharingRepository {
   }
 
   async createSkillOffer(input: CreateSkillOfferInput): Promise<SkillOffer> {
+    const nowIso = new Date().toISOString();
     const offer: SkillOffer = {
       id: nextId('skill'),
       providerId: input.provider.uid,
@@ -626,12 +1109,41 @@ export class MockSharingRepository implements ISharingRepository {
       description: input.description.trim(),
       availability: input.availability.trim(),
       active: true,
-      createdAtIso: new Date().toISOString(),
+      createdAtIso: nowIso,
     };
     const s = store.get();
     s.skillOffers = [offer, ...s.skillOffers];
+    awardPointsForActivity(s, {
+      memberId: input.provider.uid,
+      activityType: 'i_can_create',
+      description: `Created "I Can" offer: ${offer.title}`,
+      entityType: 'skill_offer',
+      entityId: offer.id,
+      entityTitle: offer.title,
+      nowIso,
+    });
     store.save();
     return offer;
+  }
+
+  async deleteSkillOffer(offerId: string, actorUserId: string): Promise<void> {
+    const s = store.get();
+    const existing = s.skillOffers.find((o) => o.id === offerId);
+    if (!existing) return;
+    const actor = s.users.find((u) => u.uid === actorUserId);
+    if (existing.providerId !== actorUserId && actor?.role !== 'admin') {
+      throw new Error('Only the provider or a community admin can delete this skill offer.');
+    }
+    s.skillOffers = s.skillOffers.filter((o) => o.id !== offerId);
+    reverseActivePointsForEntity(s, {
+      activityType: 'i_can_create',
+      entityId: offerId,
+      memberId: existing.providerId,
+      actorUserId,
+      reason: '"I Can" offer deleted',
+      nowIso: new Date().toISOString(),
+    });
+    store.save();
   }
 
   async toggleSkillOfferActive(offerId: string, actorUserId: string): Promise<SkillOffer> {
@@ -659,6 +1171,7 @@ export class MockEventRepository implements IEventRepository {
     const dayLabel = String(parsedDate.getDate());
     const startIso = new Date(`${input.dateStr}T${input.startTime}:00`).toISOString();
     const endIso = new Date(`${input.dateStr}T${input.endTime}:00`).toISOString();
+    const nowIso = new Date().toISOString();
 
     const evt: CommunityEvent = {
       id: nextId('evt'),
@@ -684,6 +1197,13 @@ export class MockEventRepository implements IEventRepository {
     };
     const s = store.get();
     s.events = [evt, ...s.events];
+    processEventRsvpLedgerChange(s, {
+      memberId: input.host.uid,
+      event: evt,
+      previousStatus: undefined,
+      newStatus: 'going',
+      nowIso,
+    });
     store.save();
     return evt;
   }
@@ -692,11 +1212,21 @@ export class MockEventRepository implements IEventRepository {
     const s = store.get();
     const evt = s.events.find((e) => e.id === eventId);
     if (!evt) throw new Error('Event not found.');
+    const previousStatus = evt.rsvps[userId];
+    if (previousStatus === status) return evt;
+
     const updated: CommunityEvent = {
       ...evt,
       rsvps: { ...evt.rsvps, [userId]: status },
     };
     s.events = s.events.map((e) => (e.id === eventId ? updated : e));
+    processEventRsvpLedgerChange(s, {
+      memberId: userId,
+      event: updated,
+      previousStatus,
+      newStatus: status,
+      nowIso: new Date().toISOString(),
+    });
     store.save();
     return updated;
   }
@@ -1049,5 +1579,192 @@ export class WebNoopSmsIngestionBridge implements ISmsIngestionBridge {
 
   getArchitectureNotice(): string {
     return 'SMS transaction reading is disabled on the web app. It is reserved for the future Android (React Native + Expo) client after Google Play permission review.';
+  }
+}
+
+export class MockPointsRepository implements IPointsRepository {
+  async getConfiguration(): Promise<PointsConfiguration> {
+    return structuredClone(store.get().pointsConfig);
+  }
+
+  async updateConfiguration(
+    actor: UserProfile,
+    config: PointsConfiguration
+  ): Promise<PointsConfiguration> {
+    if (actor.role !== 'admin') {
+      throw new Error('Only community admins can modify points configuration.');
+    }
+    const sanitizedRules = structuredClone(DEFAULT_POINT_RULES);
+    for (const key of Object.keys(sanitizedRules) as ConfigurablePointActivityType[]) {
+      const incoming = config.rules[key];
+      if (!incoming) continue;
+      const safePoints = Math.max(0, Math.min(1000, Math.round(Number(incoming.points) || 0)));
+      const safeLimit =
+        incoming.dailyLimit !== undefined
+          ? Math.max(1, Math.min(50, Math.round(Number(incoming.dailyLimit) || 1)))
+          : sanitizedRules[key].dailyLimit;
+      sanitizedRules[key] = {
+        ...sanitizedRules[key],
+        points: safePoints,
+        enabled: Boolean(incoming.enabled),
+        dailyLimit: safeLimit,
+      };
+    }
+
+    const updated: PointsConfiguration = {
+      rules: sanitizedRules,
+      updatedAtIso: new Date().toISOString(),
+      updatedByUserId: actor.uid,
+    };
+    const s = store.get();
+    s.pointsConfig = updated;
+    store.save();
+    return structuredClone(updated);
+  }
+
+  async getMemberTransactions(memberId: string): Promise<PointTransaction[]> {
+    return store
+      .get()
+      .pointTransactions.filter((t) => t.memberId === memberId)
+      .sort((a, b) => Date.parse(b.createdAtIso) - Date.parse(a.createdAtIso));
+  }
+
+  async getAllTransactions(actor: UserProfile): Promise<PointTransaction[]> {
+    if (actor.role !== 'admin') {
+      throw new Error('Admin privileges are required to view all member transactions.');
+    }
+    return [...store.get().pointTransactions].sort(
+      (a, b) => Date.parse(b.createdAtIso) - Date.parse(a.createdAtIso)
+    );
+  }
+
+  async getEventRsvpLogs(actor?: UserProfile): Promise<EventRsvpLog[]> {
+    const logs = [...store.get().eventRsvpLogs].sort(
+      (a, b) => Date.parse(b.createdAtIso) - Date.parse(a.createdAtIso)
+    );
+    if (!actor) return [];
+    if (actor.role === 'admin') return logs;
+    return logs.filter((l) => l.memberId === actor.uid);
+  }
+
+  async adjustMemberPoints(input: AdminPointAdjustmentInput): Promise<PointTransaction> {
+    if (input.actor.role !== 'admin') {
+      throw new Error('Only community admins can manually adjust member points.');
+    }
+    const reason = input.reason.trim();
+    if (reason.length < 3) {
+      throw new Error('A clear audit reason (minimum 3 characters) is required for manual point adjustments.');
+    }
+    const s = store.get();
+    const targetUser = s.users.find((u) => u.uid === input.targetUserId);
+    if (!targetUser) {
+      throw new Error('Target member not found.');
+    }
+
+    const nowIso = new Date().toISOString();
+    const reversedIds = getReversedTransactionIdSet(s.pointTransactions);
+
+    if (input.mode === 'award') {
+      const pts = Math.round(input.points);
+      if (!Number.isFinite(pts) || pts <= 0) {
+        throw new Error('Award amount must be a positive whole number.');
+      }
+      const tx: PointTransaction = {
+        id: nextId('ptx'),
+        memberId: input.targetUserId,
+        activityType: 'admin_adjustment',
+        description: `Admin bonus: ${reason}`,
+        transactionType: 'award',
+        points: pts,
+        relatedEntityType: 'admin',
+        actorUserId: input.actor.uid,
+        reason,
+        createdAtIso: nowIso,
+      };
+      s.pointTransactions = [tx, ...s.pointTransactions];
+      const sync = syncUserPointsFromLedger(s, input.targetUserId);
+      pushLevelUpNotificationIfNeeded(s, input.targetUserId, sync.prevLevel, sync.newLevel, nowIso);
+      s.notifications = [
+        {
+          id: nextId('notif'),
+          recipientUserId: input.targetUserId,
+          title: `Community points awarded (+${pts} pts)`,
+          message: `${input.actor.displayName}: ${reason}`,
+          createdAtIso: nowIso,
+          read: false,
+          route: 'profile',
+        },
+        ...s.notifications,
+      ];
+      store.save();
+      return tx;
+    }
+
+    // Reversal mode
+    let reversalTx: PointTransaction;
+    if (input.relatedTransactionId) {
+      const orig = s.pointTransactions.find(
+        (t) =>
+          t.id === input.relatedTransactionId &&
+          t.memberId === input.targetUserId &&
+          t.transactionType === 'award'
+      );
+      if (!orig) {
+        throw new Error('Original award transaction not found for reversal.');
+      }
+      if (reversedIds.has(orig.id)) {
+        throw new Error('This transaction has already been reversed.');
+      }
+      reversalTx = {
+        id: nextId('ptx'),
+        memberId: input.targetUserId,
+        activityType: orig.activityType,
+        description: `Admin reversal: ${orig.description}`,
+        transactionType: 'reversal',
+        points: -Math.abs(orig.points),
+        relatedEntityType: orig.relatedEntityType ?? 'admin',
+        relatedPostId: orig.relatedPostId,
+        relatedEventId: orig.relatedEventId,
+        relatedEntityTitle: orig.relatedEntityTitle,
+        reversedTransactionId: orig.id,
+        actorUserId: input.actor.uid,
+        reason,
+        createdAtIso: nowIso,
+      };
+    } else {
+      const pts = Math.round(input.points);
+      if (!Number.isFinite(pts) || pts <= 0) {
+        throw new Error('Reversal amount must be a positive whole number.');
+      }
+      reversalTx = {
+        id: nextId('ptx'),
+        memberId: input.targetUserId,
+        activityType: 'admin_adjustment',
+        description: `Admin deduction: ${reason}`,
+        transactionType: 'reversal',
+        points: -pts,
+        relatedEntityType: 'admin',
+        actorUserId: input.actor.uid,
+        reason,
+        createdAtIso: nowIso,
+      };
+    }
+
+    s.pointTransactions = [reversalTx, ...s.pointTransactions];
+    syncUserPointsFromLedger(s, input.targetUserId);
+    s.notifications = [
+      {
+        id: nextId('notif'),
+        recipientUserId: input.targetUserId,
+        title: `Points adjusted (${reversalTx.points} pts)`,
+        message: `${input.actor.displayName}: ${reason}`,
+        createdAtIso: nowIso,
+        read: false,
+        route: 'profile',
+      },
+      ...s.notifications,
+    ];
+    store.save();
+    return reversalTx;
   }
 }

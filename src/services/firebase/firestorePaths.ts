@@ -20,4 +20,7 @@ export const FIRESTORE_PATHS = {
   eventTasks: (eventId: string) => `events/${eventId}/tasks`,
   eventDiscussions: (eventId: string) => `events/${eventId}/discussions`,
   driveMedia: () => 'driveMedia',
+  pointsConfig: () => 'systemConfig/pointsConfig',
+  pointTransactions: () => 'pointTransactions',
+  eventRsvpLogs: () => 'eventRsvpLogs',
 } as const;

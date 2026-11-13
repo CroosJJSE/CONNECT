@@ -6,3 +6,4 @@ export * from './orbit';
 export * from './event';
 export * from './finance';
 export * from './media';
+export * from './points';

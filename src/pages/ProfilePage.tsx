@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Award,
   Bell,
   ChevronRight,
   Globe,
@@ -15,6 +16,7 @@ import {
   Verified,
   Wallet,
 } from 'lucide-react';
+import { calculateLevelFromPoints } from '../domain/logic/pointsRules';
 import type { CurrencyCode } from '../domain/models';
 import { useAuth } from '../hooks/useAuth';
 import { useConnectData } from '../hooks/useConnectData';
@@ -23,6 +25,8 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { DriveMediaCard } from '../components/common/DriveMediaCard';
 import { DriveUploadField } from '../components/common/DriveUploadField';
 import { ModalSheet } from '../components/common/ModalSheet';
+import { AdminPointsConsole } from '../components/profile/AdminPointsConsole';
+import { MemberPointsSection } from '../components/profile/MemberPointsSection';
 
 type ProfileSheet =
   | 'edit_profile'
@@ -34,6 +38,7 @@ type ProfileSheet =
   | 'groups_directory'
   | 'pact'
   | 'support'
+  | 'admin_points'
   | null;
 
 export function ProfilePage() {
@@ -66,6 +71,7 @@ export function ProfilePage() {
 
   if (!user) return null;
 
+  const userLevel = calculateLevelFromPoints(user.points ?? 0);
   const myLentOrBorrowed = sharingItems.filter(
     (i) => i.ownerId === user.uid || i.borrowerId === user.uid
   );
@@ -101,6 +107,9 @@ export function ProfilePage() {
             initials={user.initials}
             size="xl"
             verifiedBadge={user.verified}
+            userId={user.uid}
+            level={userLevel}
+            showLevelTag
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -114,6 +123,9 @@ export function ProfilePage() {
             </div>
             <p className="text-xs text-on-surface-variant mt-0.5">{user.clusterName}</p>
             <p className="text-xs text-secondary font-medium">{user.unitLabel}</p>
+            <p className="text-[11px] text-primary font-semibold tabular-nums mt-1">
+              Level {userLevel} · {user.points ?? 0} pts
+            </p>
           </div>
         </div>
 
@@ -145,6 +157,9 @@ export function ProfilePage() {
         </div>
       </section>
 
+      {/* 1b. Community Contribution Points & Level */}
+      <MemberPointsSection />
+
       {/* 2. Preferences & Trust List */}
       <section className="flex flex-col gap-2">
         <span className="text-xs font-semibold text-on-surface-variant px-1 uppercase tracking-wider">
@@ -152,6 +167,29 @@ export function ProfilePage() {
         </span>
 
         <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden divide-y divide-outline-variant/20">
+          {user.role === 'admin' && (
+            <button
+              type="button"
+              onClick={() => setActiveSheet('admin_points')}
+              className="w-full text-left flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-on-surface">
+                    Admin Points &amp; Levels Console
+                  </p>
+                  <p className="text-xs text-on-surface-variant truncate">
+                    Configure point rules, daily limits, audit ledger &amp; adjustments
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-outline shrink-0" />
+            </button>
+          )}
+
           {/* Finance Tracker Module Toggle (Default OFF) */}
           <div className="flex items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3 min-w-0">
@@ -619,7 +657,13 @@ export function ProfilePage() {
                   key={m.uid}
                   className="p-2.5 rounded-xl bg-surface-container-low flex items-center gap-2.5"
                 >
-                  <Avatar src={m.avatarUrl} alt={m.displayName} initials={m.initials} size="sm" />
+                  <Avatar
+                    src={m.avatarUrl}
+                    alt={m.displayName}
+                    initials={m.initials}
+                    size="sm"
+                    userId={m.uid}
+                  />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-on-surface truncate">
                       {m.displayName}
@@ -727,6 +771,17 @@ export function ProfilePage() {
           </button>
         </div>
       </ModalSheet>
+
+      {user.role === 'admin' && (
+        <ModalSheet
+          open={activeSheet === 'admin_points'}
+          title="Admin Points & Levels Console"
+          subtitle="Configure rules, review member balances, adjust points with audit reasons, and inspect activity flags"
+          onClose={() => setActiveSheet(null)}
+        >
+          <AdminPointsConsole />
+        </ModalSheet>
+      )}
 
       <ConfirmDialog
         open={logoutOpen}

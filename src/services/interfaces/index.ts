@@ -5,6 +5,7 @@ import type {
   CommunityPoll,
   CurrencyCode,
   DriveMediaMetadata,
+  EventRsvpLog,
   EventTask,
   FinanceTransaction,
   InterestGroup,
@@ -12,6 +13,8 @@ import type {
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
+  PointTransaction,
+  PointsConfiguration,
   Post,
   PostAudienceType,
   PostCategory,
@@ -99,14 +102,18 @@ export interface CreateSkillOfferInput {
 export interface ISharingRepository {
   getItems(includeDonatedArchive?: boolean): Promise<SharingItem[]>;
   createItem(input: CreateSharingItemInput): Promise<SharingItem>;
+  deleteItem(itemId: string, actorUserId: string): Promise<void>;
   borrowOrClaimItem(itemId: string, actor: UserProfile): Promise<SharingItem>;
   returnLentItem(itemId: string, actor: UserProfile): Promise<SharingItem>;
   getRequests(): Promise<SharingRequest[]>;
   createRequest(input: CreateSharingRequestInput): Promise<SharingRequest>;
-  offerHelp(requestId: string, helperName: string): Promise<SharingRequest>;
+  deleteRequest(requestId: string, actorUserId: string): Promise<void>;
+  offerHelp(requestId: string, helperName: string, helperUserId?: string): Promise<SharingRequest>;
+  verifyHelpfulContribution(requestId: string, helperUserId: string, actor: UserProfile): Promise<SharingRequest>;
   closeRequest(requestId: string, actorUserId: string): Promise<SharingRequest>;
   getSkillOffers(): Promise<SkillOffer[]>;
   createSkillOffer(input: CreateSkillOfferInput): Promise<SkillOffer>;
+  deleteSkillOffer(offerId: string, actorUserId: string): Promise<void>;
   toggleSkillOfferActive(offerId: string, actorUserId: string): Promise<SkillOffer>;
 }
 
@@ -211,6 +218,24 @@ export interface ISmsIngestionBridge {
   hasPermission(): Promise<boolean>;
   requestPermission(): Promise<boolean>;
   getArchitectureNotice(): string;
+}
+
+export interface AdminPointAdjustmentInput {
+  actor: UserProfile;
+  targetUserId: string;
+  mode: 'award' | 'reverse';
+  points: number;
+  reason: string;
+  relatedTransactionId?: string;
+}
+
+export interface IPointsRepository {
+  getConfiguration(): Promise<PointsConfiguration>;
+  updateConfiguration(actor: UserProfile, config: PointsConfiguration): Promise<PointsConfiguration>;
+  getMemberTransactions(memberId: string): Promise<PointTransaction[]>;
+  getAllTransactions(actor: UserProfile): Promise<PointTransaction[]>;
+  getEventRsvpLogs(actor?: UserProfile): Promise<EventRsvpLog[]>;
+  adjustMemberPoints(input: AdminPointAdjustmentInput): Promise<PointTransaction>;
 }
 
 export interface AppPlatformPreferences {

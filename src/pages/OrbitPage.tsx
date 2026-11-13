@@ -253,6 +253,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <Avatar
+                    userId={user.uid}
                     src={user.avatarUrl}
                     alt={user.displayName}
                     initials={user.initials}
@@ -281,6 +282,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Avatar
+                      userId={user.uid}
                       src={user.avatarUrl}
                       alt={user.displayName}
                       initials={user.initials}
@@ -520,7 +522,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
                     className="bg-surface-container-lowest rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col gap-3"
                   >
                     <div className="flex items-start gap-2.5 min-w-0">
-                      <Avatar alt={post.authorName} initials={post.authorInitials} size="sm" />
+                      <Avatar userId={post.authorId} alt={post.authorName} initials={post.authorInitials} size="sm" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <p className="text-sm font-semibold text-on-surface truncate">
@@ -624,6 +626,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
                             {post.comments.map((cmt) => (
                               <div key={cmt.id} className="p-2.5 sm:p-3 flex items-start gap-2.5">
                                 <Avatar
+                                  userId={cmt.authorId}
                                   alt={cmt.authorName}
                                   initials={cmt.authorInitials}
                                   size="xs"
@@ -650,6 +653,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
                         <div className="flex items-end gap-2 pt-0.5">
                           <div className="hidden sm:block shrink-0">
                             <Avatar
+                              userId={user.uid}
                               src={user.avatarUrl}
                               alt={user.displayName}
                               initials={user.initials}
@@ -723,6 +727,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar
+                        userId={friend.uid}
                         src={friend.avatarUrl}
                         alt={friend.displayName}
                         initials={friend.initials}
@@ -800,7 +805,7 @@ export function OrbitPage({ searchQuery }: { searchQuery: string }) {
                       className="p-3 rounded-xl bg-surface-container-low flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Avatar alt={member.displayName} initials={member.initials} size="sm" />
+                        <Avatar userId={member.uid} src={member.avatarUrl} alt={member.displayName} initials={member.initials} size="sm" />
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-on-surface truncate">
                             {member.displayName}

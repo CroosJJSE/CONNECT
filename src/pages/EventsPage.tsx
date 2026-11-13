@@ -36,6 +36,8 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
     directoryMembers,
     events,
     driveMedia,
+    pointsConfig,
+    memberTransactions,
     createEvent,
     setRsvp,
     inviteToEvent,
@@ -394,6 +396,32 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
                             );
                           })}
                         </div>
+                        {(() => {
+                          const rsvpRule = pointsConfig.rules.event_rsvp_yes;
+                          const evtTxs = memberTransactions.filter(
+                            (t) => t.activityType === 'event_rsvp_yes' && t.relatedEventId === evt.id
+                          );
+                          const hasPriorAward = evtTxs.some((t) => t.transactionType === 'award');
+                          const reversedIds = new Set(
+                            evtTxs
+                              .filter((t) => t.transactionType === 'reversal' && t.reversedTransactionId)
+                              .map((t) => t.reversedTransactionId!)
+                          );
+                          const hasActiveAward = evtTxs.some(
+                            (t) => t.transactionType === 'award' && !reversedIds.has(t.id)
+                          );
+                          if (!rsvpRule?.enabled && !hasPriorAward) return null;
+                          const pts = rsvpRule?.points ?? 25;
+                          return (
+                            <p className="text-[11px] text-on-surface-variant tabular-nums">
+                              {userRsvp === 'going' && hasActiveAward
+                                ? `Earned +${pts} community points (reverses if changed)`
+                                : hasPriorAward && !hasActiveAward
+                                  ? `Points reversed on RSVP change · Select Going to restore +${pts} pts`
+                                  : `RSVP Going awards +${pts} community points`}
+                            </p>
+                          );
+                        })()}
                       </div>
 
                       {/* Google Calendar Sync */}
@@ -590,7 +618,7 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
                           <div className="flex flex-col divide-y divide-outline-variant/20 bg-surface-container-lowest rounded-xl overflow-hidden">
                             {evt.comments.map((c) => (
                               <div key={c.id} className="p-3 flex items-start gap-2.5">
-                                <Avatar alt={c.authorName} initials={c.authorInitials} size="xs" />
+                                <Avatar userId={c.authorId} alt={c.authorName} initials={c.authorInitials} size="xs" />
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="text-xs font-semibold text-on-surface">
@@ -788,7 +816,7 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
                       className="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between gap-2 cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Avatar alt={m.displayName} initials={m.initials} size="sm" />
+                        <Avatar userId={m.uid} src={m.avatarUrl} alt={m.displayName} initials={m.initials} size="sm" />
                         <div>
                           <p className="text-xs font-semibold text-on-surface">{m.displayName}</p>
                           <p className="text-[11px] text-on-surface-variant">{m.unitLabel}</p>

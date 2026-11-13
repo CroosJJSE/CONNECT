@@ -14,7 +14,8 @@
         "bio": { "type": "string", "maxLength": 300 },
         "role": { "type": "string", "enum": ["member", "steward", "admin"] },
         "verified": { "type": "boolean" },
-        "joinedAt": { "type": "string", "format": "date-time" }
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "points": { "type": "integer" }
       },
       "required": ["uid", "displayName", "initials", "role", "verified"]
     },
@@ -123,6 +124,8 @@
         "description": { "type": "string", "maxLength": 1200 },
         "requiredDuration": { "type": "string", "maxLength": 80 },
         "status": { "type": "string", "enum": ["open", "in_progress", "closed"] },
+        "helperUserIds": { "type": "array" },
+        "verifiedHelperIds": { "type": "array" },
         "driveMediaId": { "type": "string", "maxLength": 128 },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -208,6 +211,69 @@
         "occurredAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "ownerId", "title", "amount", "type", "category", "occurredAt"]
+    },
+    "PointsConfiguration": {
+      "title": "PointsConfiguration",
+      "description": "Admin-configurable point values, enable toggles, and daily caps per community activity",
+      "type": "object",
+      "properties": {
+        "rules": { "type": "object" },
+        "updatedAtIso": { "type": "string", "format": "date-time" },
+        "updatedByUserId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["rules", "updatedAtIso"]
+    },
+    "PointTransaction": {
+      "title": "PointTransaction",
+      "description": "Immutable ledger entry for every point award, reversal, RSVP reinstatement, or admin adjustment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "memberId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "activityType": {
+          "type": "string",
+          "enum": [
+            "i_have_create",
+            "i_can_create",
+            "i_need_create",
+            "community_post_create",
+            "helpful_contribution",
+            "event_rsvp_yes",
+            "event_attendance_verified",
+            "admin_adjustment"
+          ]
+        },
+        "description": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "transactionType": { "type": "string", "enum": ["award", "reversal"] },
+        "points": { "type": "integer" },
+        "relatedEntityType": { "type": "string", "enum": ["post", "sharing_item", "sharing_request", "skill_offer", "event", "admin"] },
+        "relatedPostId": { "type": "string", "maxLength": 128 },
+        "relatedEventId": { "type": "string", "maxLength": 128 },
+        "relatedEntityTitle": { "type": "string", "maxLength": 160 },
+        "reversedTransactionId": { "type": "string", "maxLength": 128 },
+        "reinstatedFromTransactionId": { "type": "string", "maxLength": 128 },
+        "actorUserId": { "type": "string", "maxLength": 128 },
+        "reason": { "type": "string", "maxLength": 300 },
+        "createdAtIso": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "memberId", "activityType", "description", "transactionType", "points", "createdAtIso"]
+    },
+    "EventRsvpLog": {
+      "title": "EventRsvpLog",
+      "description": "Audit log of every member RSVP status transition and its resulting point adjustment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventTitle": { "type": "string", "maxLength": 160 },
+        "memberId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "previousStatus": { "type": "string", "enum": ["going", "maybe", "not_going"] },
+        "newStatus": { "type": "string", "enum": ["going", "maybe", "not_going"] },
+        "pointTransactionId": { "type": "string", "maxLength": 128 },
+        "pointsDelta": { "type": "integer" },
+        "createdAtIso": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "eventId", "eventTitle", "memberId", "newStatus", "pointsDelta", "createdAtIso"]
     }
   },
   "firestore": {
@@ -262,6 +328,18 @@
     "/users/{userId}/transactions/{transactionId}": {
       "schema": { "$ref": "#/entities/FinanceTransaction" },
       "description": "Owner-only personal finance transactions"
+    },
+    "/systemConfig/pointsConfig": {
+      "schema": { "$ref": "#/entities/PointsConfiguration" },
+      "description": "Admin-managed configurable point rules and daily caps"
+    },
+    "/pointTransactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/PointTransaction" },
+      "description": "Server-authoritative ledger of member point awards and reversals"
+    },
+    "/eventRsvpLogs/{logId}": {
+      "schema": { "$ref": "#/entities/EventRsvpLog" },
+      "description": "Audit log of member event RSVP changes and associated point transactions"
     }
   }
 }

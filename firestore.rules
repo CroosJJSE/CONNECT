@@ -54,7 +54,7 @@ service cloud.firestore {
     match /users/{userId} {
       function isValidUserPublic(data) {
         return data.keys().hasAll(['uid', 'displayName', 'initials', 'role', 'verified'])
-          && data.keys().hasOnly(['uid', 'displayName', 'initials', 'avatarUrl', 'clusterName', 'unitLabel', 'bio', 'role', 'verified', 'joinedAt'])
+          && data.keys().hasOnly(['uid', 'displayName', 'initials', 'avatarUrl', 'clusterName', 'unitLabel', 'bio', 'role', 'verified', 'joinedAt', 'points'])
           && isValidId(data.uid)
           && data.uid == request.auth.uid
           && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
@@ -62,6 +62,7 @@ service cloud.firestore {
           && (!('bio' in data) || (data.bio is string && data.bio.size() <= 300))
           && (!('clusterName' in data) || (data.clusterName is string && data.clusterName.size() <= 100))
           && (!('unitLabel' in data) || (data.unitLabel is string && data.unitLabel.size() <= 40))
+          && (!('points' in data) || (data.points is int && data.points >= 0))
           && data.role in ['member', 'steward', 'admin']
           && data.verified is bool;
       }
@@ -70,11 +71,13 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow create: if isVerifiedUser() && isOwner(userId) && isValidId(userId)
         && isValidUserPublic(incoming())
-        && incoming().role == 'member';
+        && incoming().role == 'member'
+        && (!('points' in incoming()) || incoming().points == 0);
       allow update: if isVerifiedUser() && (isOwner(userId) || isAdmin()) && isValidId(userId)
         && isValidUserPublic(incoming())
         && incoming().uid == existing().uid
         && (isAdmin() || (incoming().role == existing().role && incoming().verified == existing().verified))
+        && !incoming().diff(existing()).affectedKeys().hasAny(['points', 'role', 'verified'])
         && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'initials', 'avatarUrl', 'clusterName', 'unitLabel', 'bio']);
 
       match /private/{docId} {
@@ -307,6 +310,30 @@ service cloud.firestore {
         && incoming().ownerUserId == existing().ownerUserId
         && incoming().driveFileId == existing().driveFileId;
       allow delete: if isOwner(existing().ownerUserId) && isValidId(mediaId);
+    }
+
+    // --- Contribution Points & Levels (Server-Authoritative Ledger) ---
+    match /systemConfig/pointsConfig {
+      allow get: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /pointTransactions/{transactionId} {
+      allow get: if isSignedIn() && isValidId(transactionId)
+        && (existing().memberId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn()
+        && (existing().memberId == request.auth.uid || isAdmin());
+      // Clients cannot fabricate or alter point ledger entries directly; Cloud Functions only.
+      allow write: if false;
+    }
+
+    match /eventRsvpLogs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId)
+        && (existing().memberId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn()
+        && (existing().memberId == request.auth.uid || isAdmin());
+      // Clients cannot alter RSVP audit logs directly; Cloud Functions only.
+      allow write: if false;
     }
   }
 }

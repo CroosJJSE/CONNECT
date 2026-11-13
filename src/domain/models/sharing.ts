@@ -43,6 +43,8 @@ export interface SharingRequest {
   requiredDuration: string;
   status: SharingRequestStatus;
   helperNames: string[];
+  helperUserIds?: string[];
+  verifiedHelperIds?: string[];
   driveMediaId?: string;
   createdAtIso: string;
 }

@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
+  Award,
   Bell,
   Calendar,
   FolderOpen,
@@ -7,9 +8,12 @@ import {
   Orbit,
   Search,
   Settings,
+  Sparkles,
   Wallet,
   X,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { calculateLevelFromPoints, getLevelFrameStyle } from '../../domain/logic/pointsRules';
 import { useAuth } from '../../hooks/useAuth';
 import { useConnectData } from '../../hooks/useConnectData';
 import { STITCH_ASSETS } from '../../services/mock/seedData';
@@ -59,12 +63,30 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const { user } = useAuth();
-  const { notifications, markNotificationsRead, actionBanner, dismissBanner } = useConnectData();
+  const {
+    notifications,
+    markNotificationsRead,
+    actionBanner,
+    dismissBanner,
+    lastPointFeedback,
+    dismissPointFeedback,
+  } = useConnectData();
   const [notifOpen, setNotifOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
+  useEffect(() => {
+    if (!lastPointFeedback) return;
+    const timer = window.setTimeout(
+      () => dismissPointFeedback(),
+      lastPointFeedback.leveledUp ? 6000 : 4200
+    );
+    return () => window.clearTimeout(timer);
+  }, [lastPointFeedback, dismissPointFeedback]);
+
   if (!user) return null;
 
+  const userLevel = calculateLevelFromPoints(user.points ?? 0);
+  const userFrame = getLevelFrameStyle(userLevel);
   const financeEnabled = Boolean(user.financeEnabled);
   const visibleDesktopNavItems = DESKTOP_NAV_ITEMS.filter(
     (item) => item.id !== 'finance' || financeEnabled
@@ -143,11 +165,19 @@ export function AppShell({
           className="flex items-center justify-between p-2.5 bg-surface-container-lowest rounded-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] hover:bg-surface-container transition-colors text-left"
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar src={user.avatarUrl} alt={user.displayName} initials={user.initials} size="sm" />
+            <Avatar
+              userId={user.uid}
+              level={userLevel}
+              src={user.avatarUrl}
+              alt={user.displayName}
+              initials={user.initials}
+              size="sm"
+              showLevelTag={false}
+            />
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-on-surface truncate">{user.displayName}</span>
-              <span className="text-[11px] text-on-surface-variant truncate">
-                {user.role === 'admin' ? 'Community Admin' : 'Active Member'}
+              <span className="text-[11px] text-on-surface-variant truncate tabular-nums">
+                Lv.{userLevel} · {user.points ?? 0} pts
               </span>
             </div>
           </div>
@@ -254,12 +284,26 @@ export function AppShell({
             <button
               type="button"
               onClick={() => onNavigate('profile')}
-              aria-label="Open Profile & Settings"
-              className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all ${
+              aria-label={`Open Profile & Settings (Level ${userLevel})`}
+              title={`Level ${userLevel} · ${userFrame.tierName} · ${user.points ?? 0} pts`}
+              className={`min-h-[44px] pl-2.5 pr-1.5 py-1 flex items-center gap-2 rounded-full bg-surface-container-low hover:bg-surface-container transition-all ${
                 activeRoute === 'profile' ? 'ring-2 ring-primary' : ''
               }`}
             >
-              <Avatar src={user.avatarUrl} alt={user.displayName} initials={user.initials} size="sm" />
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold leading-none tabular-nums whitespace-nowrap ${userFrame.badgeSurfaceClass} ${userFrame.badgeTextClass}`}
+              >
+                Lv.{userLevel}
+              </span>
+              <Avatar
+                userId={user.uid}
+                level={userLevel}
+                src={user.avatarUrl}
+                alt={user.displayName}
+                initials={user.initials}
+                size="sm"
+                showLevelTag={false}
+              />
             </button>
           </div>
         </header>
@@ -287,6 +331,95 @@ export function AppShell({
             </div>
           </div>
         )}
+
+        {/* Animated Points & Level-Up Notification */}
+        <AnimatePresence>
+          {lastPointFeedback && (
+            <motion.div
+              key={lastPointFeedback.id}
+              initial={{ opacity: 0, y: 18, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+              className="fixed bottom-20 lg:bottom-6 right-4 left-4 sm:left-auto sm:w-96 z-50"
+            >
+              <div
+                role="status"
+                className={`rounded-2xl p-3.5 shadow-xl border flex items-start justify-between gap-3 ${
+                  lastPointFeedback.leveledUp
+                    ? 'bg-surface-container-lowest border-primary/35 ring-2 ring-primary/15'
+                    : 'bg-surface-container-lowest border-outline-variant/25'
+                }`}
+              >
+                <div className="flex items-start gap-3 min-w-0">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      lastPointFeedback.leveledUp
+                        ? getLevelFrameStyle(lastPointFeedback.newLevel).badgeSurfaceClass
+                        : lastPointFeedback.delta > 0
+                          ? 'bg-primary-fixed text-primary'
+                          : 'bg-surface-container text-on-surface-variant'
+                    }`}
+                  >
+                    {lastPointFeedback.leveledUp ? (
+                      <Sparkles
+                        className={`w-5 h-5 ${getLevelFrameStyle(lastPointFeedback.newLevel).badgeTextClass}`}
+                      />
+                    ) : (
+                      <Award className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {lastPointFeedback.leveledUp ? (
+                        <span className="text-xs font-bold text-primary">
+                          Level Up! Level {lastPointFeedback.newLevel} · {lastPointFeedback.tierName}
+                        </span>
+                      ) : lastPointFeedback.limitReached ? (
+                        <span className="text-xs font-semibold text-on-surface">
+                          Daily post cap reached
+                        </span>
+                      ) : (
+                        <span
+                          className={`text-xs font-bold tabular-nums ${
+                            lastPointFeedback.delta > 0 ? 'text-primary' : 'text-on-surface-variant'
+                          }`}
+                        >
+                          {lastPointFeedback.delta > 0
+                            ? `+${lastPointFeedback.delta} Community Points`
+                            : `${lastPointFeedback.delta} Community Points`}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-2">
+                      {lastPointFeedback.leveledUp
+                        ? `New circular profile frame unlocked! (${lastPointFeedback.description})`
+                        : lastPointFeedback.description}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate('profile');
+                        dismissPointFeedback();
+                      }}
+                      className="text-[11px] font-semibold text-primary mt-1 hover:underline"
+                    >
+                      View points & level →
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissPointFeedback}
+                  aria-label="Dismiss points notification"
+                  className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Main Scrollable Viewport */}
         <main className="flex-1 pt-16 pb-24 lg:pb-10">

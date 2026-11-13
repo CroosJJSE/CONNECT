@@ -64,6 +64,7 @@ function MentionSuggestionsList({
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <Avatar
+                  userId={member.uid}
                   src={member.avatarUrl}
                   alt={member.displayName}
                   initials={member.initials}

@@ -1,16 +1,26 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { MemberLevelProvider } from '../components/common/Avatar';
+import {
+  calculateLevelFromPoints,
+  countDailyActiveAwards,
+  createDefaultPointsConfiguration,
+  getLevelFrameStyle,
+} from '../domain/logic/pointsRules';
 import type {
   Community,
   CommunityAnnouncement,
   CommunityEvent,
   CommunityPoll,
   DriveMediaMetadata,
+  EventRsvpLog,
   FinanceTransaction,
   InterestGroup,
   MediaVisibility,
   MonthlyBudget,
   NotificationItem,
   OrbitConnection,
+  PointsConfiguration,
+  PointTransaction,
   Post,
   RsvpStatus,
   SavingsGoal,
@@ -20,6 +30,7 @@ import type {
   UserProfile,
 } from '../domain/models';
 import type {
+  AdminPointAdjustmentInput,
   CalendarSyncResult,
   CreateEventInput,
   CreateEventTaskInput,
@@ -32,6 +43,17 @@ import type {
 } from '../services/interfaces';
 import { services } from '../services/serviceContainer';
 import { useAuth } from './useAuth';
+
+export interface PointFeedback {
+  id: string;
+  delta: number;
+  description: string;
+  previousLevel: number;
+  newLevel: number;
+  leveledUp: boolean;
+  tierName: string;
+  limitReached?: boolean;
+}
 
 interface ConnectDataContextValue {
   communities: Community[];
@@ -53,6 +75,12 @@ interface ConnectDataContextValue {
   transactions: FinanceTransaction[];
   budgets: MonthlyBudget[];
   savingsGoals: SavingsGoal[];
+  pointsConfig: PointsConfiguration;
+  memberTransactions: PointTransaction[];
+  allPointTransactions: PointTransaction[];
+  eventRsvpLogs: EventRsvpLog[];
+  lastPointFeedback: PointFeedback | null;
+  dismissPointFeedback: () => void;
   loading: boolean;
   actionBanner: { type: 'success' | 'error'; message: string } | null;
   dismissBanner: () => void;
@@ -68,12 +96,16 @@ interface ConnectDataContextValue {
   togglePinPost: (postId: string) => Promise<void>;
 
   createSharingItem: (input: Omit<CreateSharingItemInput, 'owner'>, includeArchive?: boolean) => Promise<void>;
+  deleteSharingItem: (itemId: string, includeArchive?: boolean) => Promise<void>;
   borrowOrClaimItem: (itemId: string, includeArchive?: boolean) => Promise<void>;
   returnLentItem: (itemId: string, includeArchive?: boolean) => Promise<void>;
   createSharingRequest: (input: Omit<CreateSharingRequestInput, 'requester'>) => Promise<void>;
+  deleteSharingRequest: (requestId: string) => Promise<void>;
   offerHelpOnRequest: (requestId: string) => Promise<void>;
+  verifyHelpfulContribution: (requestId: string, helperUserId: string) => Promise<void>;
   closeSharingRequest: (requestId: string) => Promise<void>;
   createSkillOffer: (input: Omit<CreateSkillOfferInput, 'provider'>) => Promise<void>;
+  deleteSkillOffer: (offerId: string) => Promise<void>;
   toggleSkillOfferActive: (offerId: string) => Promise<void>;
 
   addToOrbit: (friendUserId: string, note?: string) => Promise<void>;
@@ -101,6 +133,11 @@ interface ConnectDataContextValue {
   votePoll: (pollId: string, optionId: string) => Promise<void>;
   toggleGroup: (groupId: string) => Promise<void>;
   markNotificationsRead: () => Promise<void>;
+
+  // Points & Admin actions
+  updatePointsConfig: (config: PointsConfiguration) => Promise<void>;
+  adjustMemberPoints: (input: Omit<AdminPointAdjustmentInput, 'actor'>) => Promise<void>;
+  refreshPointsAdminData: () => Promise<void>;
 }
 
 const ConnectDataContext = createContext<ConnectDataContextValue | null>(null);
@@ -126,16 +163,100 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [pointsConfig, setPointsConfig] = useState<PointsConfiguration>(() =>
+    createDefaultPointsConfiguration()
+  );
+  const [memberTransactions, setMemberTransactions] = useState<PointTransaction[]>([]);
+  const [allPointTransactions, setAllPointTransactions] = useState<PointTransaction[]>([]);
+  const [eventRsvpLogs, setEventRsvpLogs] = useState<EventRsvpLog[]>([]);
+  const [lastPointFeedback, setLastPointFeedback] = useState<PointFeedback | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionBanner, setActionBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const dismissBanner = useCallback(() => setActionBanner(null), []);
+  const dismissPointFeedback = useCallback(() => setLastPointFeedback(null), []);
   const notifySuccess = useCallback((message: string) => {
     setActionBanner({ type: 'success', message });
   }, []);
   const notifyError = useCallback((message: string) => {
     setActionBanner({ type: 'error', message });
   }, []);
+
+  const syncPointsSnapshot = useCallback(
+    async (
+      prevLatestTxId?: string,
+      prevUserPoints?: number,
+      options?: { checkCommunityDailyLimit?: boolean }
+    ) => {
+      if (!user) return null;
+      const [members, myTxs, rsvpLogs, notifs, cfg] = await Promise.all([
+        services.community.getDirectoryMembers(),
+        services.points.getMemberTransactions(user.uid),
+        services.points.getEventRsvpLogs(user),
+        services.community.getNotifications(),
+        services.points.getConfiguration(),
+      ]);
+      setDirectoryMembers(members);
+      setMemberTransactions(myTxs);
+      setEventRsvpLogs(rsvpLogs);
+      setNotifications(notifs);
+      setPointsConfig(cfg);
+
+      if (user.role === 'admin') {
+        setAllPointTransactions(await services.points.getAllTransactions(user));
+      }
+
+      await refreshUser();
+
+      const updatedSelf = members.find((m) => m.uid === user.uid);
+      const latestTx = myTxs[0];
+      const newLevel = calculateLevelFromPoints(updatedSelf?.points ?? user.points ?? 0);
+      const oldLevel = calculateLevelFromPoints(prevUserPoints ?? user.points ?? 0);
+
+      if (latestTx && latestTx.id !== prevLatestTxId) {
+        const feedback: PointFeedback = {
+          id: latestTx.id,
+          delta: latestTx.points,
+          description: latestTx.description,
+          previousLevel: oldLevel,
+          newLevel,
+          leveledUp: newLevel > oldLevel,
+          tierName: getLevelFrameStyle(newLevel).tierName,
+        };
+        setLastPointFeedback(feedback);
+        return feedback;
+      }
+
+      if (options?.checkCommunityDailyLimit) {
+        const postRule = cfg.rules.community_post_create;
+        if (postRule?.enabled && postRule.dailyLimit) {
+          const todayCount = countDailyActiveAwards({
+            memberId: user.uid,
+            activityType: 'community_post_create',
+            transactions: myTxs,
+            referenceIso: new Date().toISOString(),
+          });
+          if (todayCount >= postRule.dailyLimit) {
+            const feedback: PointFeedback = {
+              id: `cap-${Date.now()}`,
+              delta: 0,
+              description: `Daily community post point cap (${postRule.dailyLimit}/day) reached`,
+              previousLevel: oldLevel,
+              newLevel,
+              leveledUp: false,
+              tierName: getLevelFrameStyle(newLevel).tierName,
+              limitReached: true,
+            };
+            setLastPointFeedback(feedback);
+            return feedback;
+          }
+        }
+      }
+
+      return null;
+    },
+    [user, refreshUser]
+  );
 
   const refreshAll = useCallback(
     async (includeDonatedArchive: boolean = false) => {
@@ -162,6 +283,10 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
           txList,
           budgetList,
           goalList,
+          pConfig,
+          myPointTxs,
+          rsvpLogs,
+          adminPointTxs,
         ] = await Promise.all([
           services.community.getCommunities(),
           services.community.getDirectoryMembers(),
@@ -182,6 +307,10 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
           services.finance.getTransactions(user.uid),
           services.finance.getBudgets(user.uid),
           services.finance.getSavingsGoals(user.uid),
+          services.points.getConfiguration(),
+          services.points.getMemberTransactions(user.uid),
+          services.points.getEventRsvpLogs(user),
+          user.role === 'admin' ? services.points.getAllTransactions(user) : Promise.resolve([]),
         ]);
 
         const authorizedPosts = await services.feed.getPostsForUser(user, orbitMap);
@@ -205,6 +334,10 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         setTransactions(txList);
         setBudgets(budgetList);
         setSavingsGoals(goalList);
+        setPointsConfig(pConfig);
+        setMemberTransactions(myPointTxs);
+        setEventRsvpLogs(rsvpLogs);
+        setAllPointTransactions(adminPointTxs);
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Unable to load community data.');
       } finally {
@@ -220,6 +353,17 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refreshAll]);
 
+  const levelsByUserId = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const m of directoryMembers) {
+      map[m.uid] = calculateLevelFromPoints(m.points ?? 0);
+    }
+    if (user) {
+      map[user.uid] = calculateLevelFromPoints(user.points ?? 0);
+    }
+    return map;
+  }, [directoryMembers, user]);
+
   const reloadFeed = useCallback(async () => {
     if (!user) return;
     const orbitMap = await services.orbit.getOrbitMembersByOwnerMap();
@@ -231,9 +375,13 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     async (input: Omit<CreatePostInput, 'author'>) => {
       if (!user) return;
       try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
         const created = await services.feed.createPost({ ...input, author: user });
         await reloadFeed();
-        setNotifications(await services.community.getNotifications());
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints, {
+          checkCommunityDailyLimit: input.audienceType === 'communities',
+        });
         const baseMessage =
           input.audienceType === 'private'
             ? 'Private note saved.'
@@ -241,16 +389,22 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
               ? 'Shared with My Orbit.'
               : 'Post published to selected communities.';
         const mentionCount = created.mentionedUserIds?.filter((id) => id !== user.uid).length ?? 0;
+        const pointsSuffix =
+          fb && fb.delta > 0
+            ? ` (+${fb.delta} pts)`
+            : fb?.limitReached
+              ? ' · Daily post points cap reached'
+              : '';
         notifySuccess(
           mentionCount > 0 && input.audienceType !== 'private'
-            ? `${baseMessage} Mentioned ${mentionCount} neighbor${mentionCount === 1 ? '' : 's'}.`
-            : baseMessage
+            ? `${baseMessage}${pointsSuffix} Mentioned ${mentionCount} neighbor${mentionCount === 1 ? '' : 's'}.`
+            : `${baseMessage}${pointsSuffix}`
         );
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Failed to publish post.');
       }
     },
-    [user, reloadFeed, notifySuccess, notifyError]
+    [user, memberTransactions, reloadFeed, syncPointsSnapshot, notifySuccess, notifyError]
   );
 
   const toggleWarmth = useCallback(
@@ -288,14 +442,21 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     async (postId: string) => {
       if (!user) return;
       try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
         await services.feed.deletePost(postId, user.uid);
         setPosts((prev) => prev.filter((p) => p.id !== postId));
-        notifySuccess('Post removed.');
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta < 0
+            ? `Post removed (${fb.delta} pts reversed).`
+            : 'Post removed.'
+        );
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Unable to delete post.');
       }
     },
-    [user, notifySuccess, notifyError]
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
   );
 
   const togglePinPost = useCallback(
@@ -314,14 +475,42 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     async (input: Omit<CreateSharingItemInput, 'owner'>, includeArchive = false) => {
       if (!user) return;
       try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
         await services.sharing.createItem({ ...input, owner: user });
         setSharingItems(await services.sharing.getItems(includeArchive));
-        notifySuccess(`"${input.title}" listed under I Have.`);
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta > 0
+            ? `"${input.title}" listed under I Have (+${fb.delta} pts).`
+            : `"${input.title}" listed under I Have.`
+        );
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Could not publish item.');
       }
     },
-    [user, notifySuccess, notifyError]
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
+  );
+
+  const deleteSharingItem = useCallback(
+    async (itemId: string, includeArchive = false) => {
+      if (!user) return;
+      try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
+        await services.sharing.deleteItem(itemId, user.uid);
+        setSharingItems(await services.sharing.getItems(includeArchive));
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta < 0
+            ? `Listing removed (${fb.delta} pts reversed).`
+            : 'Listing removed.'
+        );
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Unable to remove listing.');
+      }
+    },
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
   );
 
   const borrowOrClaimItem = useCallback(
@@ -360,21 +549,49 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     async (input: Omit<CreateSharingRequestInput, 'requester'>) => {
       if (!user) return;
       try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
         await services.sharing.createRequest({ ...input, requester: user });
         setSharingRequests(await services.sharing.getRequests());
-        notifySuccess('Your support request is now live.');
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta > 0
+            ? `Your support request is now live (+${fb.delta} pts).`
+            : 'Your support request is now live.'
+        );
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Could not create request.');
       }
     },
-    [user, notifySuccess, notifyError]
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
+  );
+
+  const deleteSharingRequest = useCallback(
+    async (requestId: string) => {
+      if (!user) return;
+      try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
+        await services.sharing.deleteRequest(requestId, user.uid);
+        setSharingRequests(await services.sharing.getRequests());
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta < 0
+            ? `Request deleted (${fb.delta} pts reversed).`
+            : 'Request deleted.'
+        );
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Could not delete request.');
+      }
+    },
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
   );
 
   const offerHelpOnRequest = useCallback(
     async (requestId: string) => {
       if (!user) return;
       try {
-        const updated = await services.sharing.offerHelp(requestId, user.displayName);
+        const updated = await services.sharing.offerHelp(requestId, user.displayName, user.uid);
         setSharingRequests((prev) => prev.map((r) => (r.id === requestId ? updated : r)));
         notifySuccess(`Offered to help ${updated.requesterName}.`);
       } catch (err) {
@@ -382,6 +599,37 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
       }
     },
     [user, notifySuccess, notifyError]
+  );
+
+  const verifyHelpfulContribution = useCallback(
+    async (requestId: string, helperUserId: string) => {
+      if (!user) return;
+      try {
+        const updated = await services.sharing.verifyHelpfulContribution(
+          requestId,
+          helperUserId,
+          user
+        );
+        setSharingRequests((prev) => prev.map((r) => (r.id === requestId ? updated : r)));
+        await syncPointsSnapshot(memberTransactions[0]?.id, user.points ?? 0);
+        const helper = directoryMembers.find((m) => m.uid === helperUserId);
+        const rulePts = pointsConfig.rules.helpful_contribution?.points ?? 20;
+        notifySuccess(
+          `Verified ${helper?.displayName ?? 'neighbor'}'s helpful contribution (+${rulePts} pts awarded).`
+        );
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Could not verify contribution.');
+      }
+    },
+    [
+      user,
+      memberTransactions,
+      directoryMembers,
+      pointsConfig.rules.helpful_contribution,
+      syncPointsSnapshot,
+      notifySuccess,
+      notifyError,
+    ]
   );
 
   const closeSharingRequest = useCallback(
@@ -402,14 +650,42 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     async (input: Omit<CreateSkillOfferInput, 'provider'>) => {
       if (!user) return;
       try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
         await services.sharing.createSkillOffer({ ...input, provider: user });
         setSkillOffers(await services.sharing.getSkillOffers());
-        notifySuccess('Skill offer published under I Can.');
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta > 0
+            ? `Skill offer published under I Can (+${fb.delta} pts).`
+            : 'Skill offer published under I Can.'
+        );
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Could not add skill offer.');
       }
     },
-    [user, notifySuccess, notifyError]
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
+  );
+
+  const deleteSkillOffer = useCallback(
+    async (offerId: string) => {
+      if (!user) return;
+      try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
+        await services.sharing.deleteSkillOffer(offerId, user.uid);
+        setSkillOffers(await services.sharing.getSkillOffers());
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta < 0
+            ? `Skill offer removed (${fb.delta} pts reversed).`
+            : 'Skill offer removed.'
+        );
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Could not remove skill offer.');
+      }
+    },
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
   );
 
   const toggleSkillOfferActive = useCallback(
@@ -459,23 +735,40 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     async (input: Omit<CreateEventInput, 'host'>) => {
       if (!user) return;
       try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
         await services.events.createEvent({ ...input, host: user });
         setEvents(await services.events.getEvents());
-        notifySuccess(`Event "${input.title}" created.`);
+        const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+        notifySuccess(
+          fb && fb.delta > 0
+            ? `Event "${input.title}" created (+${fb.delta} RSVP pts).`
+            : `Event "${input.title}" created.`
+        );
       } catch (err) {
         notifyError(err instanceof Error ? err.message : 'Could not create event.');
       }
     },
-    [user, notifySuccess, notifyError]
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess, notifyError]
   );
 
   const setRsvp = useCallback(
     async (eventId: string, status: RsvpStatus) => {
       if (!user) return;
+      const prevTxId = memberTransactions[0]?.id;
+      const prevPoints = user.points ?? 0;
       const updated = await services.events.setRsvp(eventId, user.uid, status);
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
+      const fb = await syncPointsSnapshot(prevTxId, prevPoints);
+      if (fb) {
+        if (fb.delta > 0) {
+          notifySuccess(`RSVP Going confirmed · +${fb.delta} community points earned.`);
+        } else if (fb.delta < 0) {
+          notifySuccess(`RSVP updated · ${fb.delta} pts reversed.`);
+        }
+      }
     },
-    [user]
+    [user, memberTransactions, syncPointsSnapshot, notifySuccess]
   );
 
   const inviteToEvent = useCallback(
@@ -676,6 +969,56 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     setNotifications(updated);
   }, []);
 
+  const updatePointsConfig = useCallback(
+    async (config: PointsConfiguration) => {
+      if (!user) return;
+      try {
+        const updated = await services.points.updateConfiguration(user, config);
+        setPointsConfig(updated);
+        notifySuccess('Points rules updated for all new activities.');
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Unable to save points configuration.');
+      }
+    },
+    [user, notifySuccess, notifyError]
+  );
+
+  const refreshPointsAdminData = useCallback(async () => {
+    if (!user || user.role !== 'admin') return;
+    const [members, allTxs, rsvpLogs, cfg] = await Promise.all([
+      services.community.getDirectoryMembers(),
+      services.points.getAllTransactions(user),
+      services.points.getEventRsvpLogs(user),
+      services.points.getConfiguration(),
+    ]);
+    setDirectoryMembers(members);
+    setAllPointTransactions(allTxs);
+    setEventRsvpLogs(rsvpLogs);
+    setPointsConfig(cfg);
+  }, [user]);
+
+  const adjustMemberPoints = useCallback(
+    async (input: Omit<AdminPointAdjustmentInput, 'actor'>) => {
+      if (!user) return;
+      try {
+        const prevTxId = memberTransactions[0]?.id;
+        const prevPoints = user.points ?? 0;
+        const tx = await services.points.adjustMemberPoints({ ...input, actor: user });
+        await syncPointsSnapshot(
+          input.targetUserId === user.uid ? prevTxId : memberTransactions[0]?.id,
+          prevPoints
+        );
+        const target = directoryMembers.find((m) => m.uid === input.targetUserId);
+        notifySuccess(
+          `${tx.points >= 0 ? 'Awarded' : 'Reversed'} ${Math.abs(tx.points)} pts for ${target?.displayName ?? 'member'}.`
+        );
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Unable to adjust member points.');
+      }
+    },
+    [user, memberTransactions, directoryMembers, syncPointsSnapshot, notifySuccess, notifyError]
+  );
+
   return (
     <ConnectDataContext.Provider
       value={{
@@ -698,6 +1041,12 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         transactions,
         budgets,
         savingsGoals,
+        pointsConfig,
+        memberTransactions,
+        allPointTransactions,
+        eventRsvpLogs,
+        lastPointFeedback,
+        dismissPointFeedback,
         loading,
         actionBanner,
         dismissBanner,
@@ -710,12 +1059,16 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         deletePost,
         togglePinPost,
         createSharingItem,
+        deleteSharingItem,
         borrowOrClaimItem,
         returnLentItem,
         createSharingRequest,
+        deleteSharingRequest,
         offerHelpOnRequest,
+        verifyHelpfulContribution,
         closeSharingRequest,
         createSkillOffer,
+        deleteSkillOffer,
         toggleSkillOfferActive,
         addToOrbit,
         removeFromOrbit,
@@ -739,9 +1092,12 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         votePoll,
         toggleGroup,
         markNotificationsRead,
+        updatePointsConfig,
+        adjustMemberPoints,
+        refreshPointsAdminData,
       }}
     >
-      {children}
+      <MemberLevelProvider levelsByUserId={levelsByUserId}>{children}</MemberLevelProvider>
     </ConnectDataContext.Provider>
   );
 }

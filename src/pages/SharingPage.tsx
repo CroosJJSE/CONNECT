@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
+  Award,
   CheckCircle2,
   HandHeart,
   Package,
   Plus,
   RotateCcw,
+  Trash2,
   Users,
 } from 'lucide-react';
 import type {
@@ -22,6 +24,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useConnectData } from '../hooks/useConnectData';
 import { Avatar } from '../components/common/Avatar';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { DriveMediaCard } from '../components/common/DriveMediaCard';
 import { DriveUploadField } from '../components/common/DriveUploadField';
 import { ModalSheet } from '../components/common/ModalSheet';
@@ -55,18 +58,24 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
   const { user } = useAuth();
   const {
     communities,
+    directoryMembers,
     sharingItems,
     sharingRequests,
     skillOffers,
     driveMedia,
+    pointsConfig,
     refreshAll,
     createSharingItem,
+    deleteSharingItem,
     borrowOrClaimItem,
     returnLentItem,
     createSharingRequest,
+    deleteSharingRequest,
     offerHelpOnRequest,
+    verifyHelpfulContribution,
     closeSharingRequest,
     createSkillOffer,
+    deleteSkillOffer,
     toggleSkillOfferActive,
     notifySuccess,
   } = useConnectData();
@@ -97,6 +106,11 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
   const [skillAvailability, setSkillAvailability] = useState('');
 
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    kind: 'item' | 'request' | 'skill';
+    id: string;
+    title: string;
+  } | null>(null);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -376,9 +390,9 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
                   {media && <DriveMediaCard media={media} />}
                 </div>
 
-                <div className="pt-2 border-t border-outline-variant/20 flex items-center justify-between gap-3">
+                <div className="pt-2 border-t border-outline-variant/20 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Avatar alt={item.ownerName} initials={item.ownerInitials} size="sm" />
+                    <Avatar userId={item.ownerId} alt={item.ownerName} initials={item.ownerInitials} size="sm" />
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-on-surface truncate">
                         Shared by {item.ownerName}
@@ -391,30 +405,45 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
                     </div>
                   </div>
 
-                  {item.status === 'available' && !isOwner && (
-                    <button
-                      type="button"
-                      onClick={() => void borrowOrClaimItem(item.id, showArchive)}
-                      className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors whitespace-nowrap shrink-0"
-                    >
-                      {item.mode === 'donate' ? 'Claim Donation' : 'Borrow Item'}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.status === 'available' && !isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => void borrowOrClaimItem(item.id, showArchive)}
+                        className="min-h-[44px] px-3.5 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors whitespace-nowrap shrink-0"
+                      >
+                        {item.mode === 'donate' ? 'Claim Donation' : 'Borrow Item'}
+                      </button>
+                    )}
 
-                  {item.status === 'lent_out' && (isOwner || isBorrower) && (
-                    <button
-                      type="button"
-                      onClick={() => void returnLentItem(item.id, showArchive)}
-                      className="min-h-[40px] px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-primary hover:text-on-primary text-xs font-semibold inline-flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Mark Returned</span>
-                    </button>
-                  )}
+                    {item.status === 'lent_out' && (isOwner || isBorrower) && (
+                      <button
+                        type="button"
+                        onClick={() => void returnLentItem(item.id, showArchive)}
+                        className="min-h-[44px] px-3 py-2 rounded-lg bg-surface-container text-on-surface hover:bg-primary hover:text-on-primary text-xs font-semibold inline-flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Mark Returned</span>
+                      </button>
+                    )}
 
-                  {item.status === 'available' && isOwner && (
-                    <span className="text-xs text-outline font-medium">Your listing</span>
-                  )}
+                    {item.status === 'available' && isOwner && (
+                      <span className="text-xs text-outline font-medium">Your listing</span>
+                    )}
+
+                    {(isOwner || user.role === 'admin') && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteConfirm({ kind: 'item', id: item.id, title: item.title })
+                        }
+                        aria-label={`Delete ${item.title}`}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/40 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             );
@@ -438,9 +467,15 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
               >
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar alt={req.requesterName} initials={req.requesterInitials} size="md" tone="secondary" />
-                      <div>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar
+                        userId={req.requesterId}
+                        alt={req.requesterName}
+                        initials={req.requesterInitials}
+                        size="md"
+                        tone="secondary"
+                      />
+                      <div className="min-w-0">
                         <h3 className="text-base font-semibold text-on-surface">{req.title}</h3>
                         <p className="text-xs text-on-surface-variant">
                           {req.requesterName} · Needed: {req.requiredDuration}
@@ -448,7 +483,7 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
                       </div>
                     </div>
                     <span
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 ${
                         req.status === 'open'
                           ? 'bg-tertiary-fixed text-on-tertiary-fixed'
                           : req.status === 'in_progress'
@@ -469,9 +504,76 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
                   {media && <DriveMediaCard media={media} />}
 
                   {req.helperNames.length > 0 && (
-                    <p className="text-xs text-primary font-medium">
-                      Neighbors helping: {req.helperNames.join(', ')}
-                    </p>
+                    <div className="bg-surface-container-low rounded-xl p-3 flex flex-col gap-2">
+                      <span className="text-xs font-semibold text-on-surface">
+                        Neighbors offering help ({req.helperNames.length})
+                      </span>
+                      <div className="flex flex-col gap-1.5">
+                        {req.helperNames.map((helperName, idx) => {
+                          const helperId =
+                            req.helperUserIds?.[idx] ??
+                            directoryMembers.find((m) => m.displayName === helperName)?.uid;
+                          const isVerified = helperId
+                            ? (req.verifiedHelperIds ?? []).includes(helperId)
+                            : false;
+                          const canVerify =
+                            Boolean(helperId) &&
+                            helperId !== req.requesterId &&
+                            !isVerified &&
+                            (isRequester || user.role === 'admin');
+                          const helpfulRule = pointsConfig.rules.helpful_contribution;
+                          const helpfulPtsLabel =
+                            helpfulRule?.enabled && helpfulRule.points > 0
+                              ? ` (+${helpfulRule.points} pts)`
+                              : '';
+
+                          return (
+                            <div
+                              key={`${req.id}-helper-${helperName}`}
+                              className="flex items-center justify-between gap-2 text-xs"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {helperId && (
+                                  <Avatar
+                                    userId={helperId}
+                                    src={directoryMembers.find((m) => m.uid === helperId)?.avatarUrl}
+                                    alt={helperName}
+                                    initials={
+                                      directoryMembers.find((m) => m.uid === helperId)?.initials ??
+                                      helperName.slice(0, 2).toUpperCase()
+                                    }
+                                    size="xs"
+                                  />
+                                )}
+                                <span className="font-medium text-on-surface truncate">
+                                  {helperName}
+                                </span>
+                              </div>
+
+                              {isVerified ? (
+                                <span className="inline-flex items-center gap-1 text-primary font-semibold whitespace-nowrap shrink-0">
+                                  <Award className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Helpful Verified</span>
+                                </span>
+                              ) : canVerify && helperId ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void verifyHelpfulContribution(req.id, helperId)}
+                                  className="min-h-[36px] px-2.5 py-1 rounded-lg bg-primary-fixed text-on-primary-fixed hover:bg-primary hover:text-on-primary font-semibold inline-flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Verify Helpful{helpfulPtsLabel}</span>
+                                </button>
+                              ) : (
+                                <span className="text-on-surface-variant whitespace-nowrap shrink-0">
+                                  Offered help
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -480,7 +582,7 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
                     <button
                       type="button"
                       onClick={() => void offerHelpOnRequest(req.id)}
-                      className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors"
+                      className="min-h-[44px] px-3.5 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors whitespace-nowrap"
                     >
                       Offer to Help
                     </button>
@@ -489,10 +591,22 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
                     <button
                       type="button"
                       onClick={() => void closeSharingRequest(req.id)}
-                      className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high inline-flex items-center gap-1 transition-colors"
+                      className="min-h-[44px] px-3.5 py-2 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high inline-flex items-center gap-1 transition-colors whitespace-nowrap"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
                       <span>Close Request</span>
+                    </button>
+                  )}
+                  {(isRequester || user.role === 'admin') && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDeleteConfirm({ kind: 'request', id: req.id, title: req.title })
+                      }
+                      aria-label={`Delete ${req.title}`}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/40 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -541,32 +655,53 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
 
                 <div className="pt-2 border-t border-outline-variant/20 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Avatar alt={offer.providerName} initials={offer.providerInitials} size="sm" tone="tertiary" />
+                    <Avatar
+                      userId={offer.providerId}
+                      alt={offer.providerName}
+                      initials={offer.providerInitials}
+                      size="sm"
+                      tone="tertiary"
+                    />
                     <span className="text-xs font-medium text-on-surface truncate">
                       {offer.providerName}
                     </span>
                   </div>
 
-                  {isProvider ? (
-                    <button
-                      type="button"
-                      onClick={() => void toggleSkillOfferActive(offer.id)}
-                      className="min-h-[40px] px-3 py-1.5 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high transition-colors"
-                    >
-                      {offer.active ? 'Pause Offer' : 'Resume Offer'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={!offer.active}
-                      onClick={() =>
-                        notifySuccess(`Sent a skill request note to ${offer.providerName}.`)
-                      }
-                      className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors disabled:opacity-50"
-                    >
-                      Connect
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isProvider ? (
+                      <button
+                        type="button"
+                        onClick={() => void toggleSkillOfferActive(offer.id)}
+                        className="min-h-[44px] px-3 py-2 rounded-lg bg-surface-container text-on-surface text-xs font-semibold hover:bg-surface-container-high transition-colors whitespace-nowrap"
+                      >
+                        {offer.active ? 'Pause Offer' : 'Resume Offer'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={!offer.active}
+                        onClick={() =>
+                          notifySuccess(`Sent a skill request note to ${offer.providerName}.`)
+                        }
+                        className="min-h-[44px] px-3.5 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-primary-container transition-colors disabled:opacity-50 whitespace-nowrap"
+                      >
+                        Connect
+                      </button>
+                    )}
+
+                    {(isProvider || user.role === 'admin') && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDeleteConfirm({ kind: 'skill', id: offer.id, title: offer.title })
+                        }
+                        aria-label={`Delete ${offer.title}`}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/40 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             );
@@ -768,6 +903,27 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
           </div>
         </div>
       </ModalSheet>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={deleteConfirm ? `Delete "${deleteConfirm.title}"?` : 'Delete listing?'}
+        description="Removing this post will also reverse the current points awarded for creating it (your lifetime points remain preserved)."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (deleteConfirm) {
+            if (deleteConfirm.kind === 'item') {
+              void deleteSharingItem(deleteConfirm.id, showArchive);
+            } else if (deleteConfirm.kind === 'request') {
+              void deleteSharingRequest(deleteConfirm.id);
+            } else {
+              void deleteSkillOffer(deleteConfirm.id);
+            }
+          }
+          setDeleteConfirm(null);
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }
