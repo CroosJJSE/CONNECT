@@ -1,10 +1,12 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Image, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@connect-core/hooks/useAuth';
 import { useConnectData } from '@connect-core/hooks/useConnectData';
 import type { NotificationItem } from '@connect-core/domain/models';
 import { colors, spacing, type } from '../theme';
+import { Avatar } from './Avatar';
+import { GCFLoader } from './GCFLoader';
 import { Icon, type IconName } from './Icon';
 import { Pressable } from './Pressable';
 import { Banner } from './ui';
@@ -17,7 +19,6 @@ const TABS: Array<{ id: AppRoute; label: string; icon: IconName; iconActive: Ico
   { id: 'events', label: 'Events', icon: 'event', iconActive: 'event' },
   { id: 'orbit', label: 'Orbit', icon: 'bubble-chart', iconActive: 'bubble-chart' },
   { id: 'finance', label: 'Finance', icon: 'account-balance-wallet', iconActive: 'account-balance-wallet' },
-  { id: 'profile', label: 'Profile', icon: 'account-circle', iconActive: 'account-circle' },
 ];
 
 function TabItem({
@@ -141,8 +142,8 @@ export function AppShell({
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Pressable onPress={() => onNavigate('home')} style={styles.brand}>
-            <Image source={require('../../assets/emblem.png')} style={styles.brandLogo} resizeMode="contain" />
+          <Pressable onPress={() => onNavigate('home')} style={styles.brand} accessibilityLabel="Home">
+            <GCFLoader size={40} />
           </Pressable>
           <Text style={styles.title}>{TITLES[activeRoute]}</Text>
         </View>
@@ -157,6 +158,13 @@ export function AppShell({
           >
             <Icon name="notifications-none" size={22} color={colors.onSurfaceVariant} />
             {unread > 0 ? <View style={styles.dot} /> : null}
+          </Pressable>
+          <Pressable
+            accessibilityLabel="Profile"
+            onPress={() => onNavigate('profile')}
+            style={styles.iconBtn}
+          >
+            <Avatar userId={user.uid} src={user.avatarUrl} initials={user.initials} size="xs" />
           </Pressable>
         </View>
       </View>
@@ -261,13 +269,9 @@ const styles = StyleSheet.create({
   brand: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: colors.containerLowest,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
-  brandLogo: { width: 40, height: 40 },
   title: { fontSize: 16, fontWeight: '600', color: colors.onSurface, letterSpacing: -0.2 },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   dot: {

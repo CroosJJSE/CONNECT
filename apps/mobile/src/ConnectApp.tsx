@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider, useAuth } from '@connect-core/hooks/useAuth';
 import { ConnectDataProvider } from '@connect-core/hooks/useConnectData';
 import { AppShell, type AppRoute } from './components/AppShell';
+import { GCFLoadingProvider, GCFSplash } from './components/GCFLoader';
 import { EventsScreen } from './screens/EventsScreen';
 import { FeedScreen } from './screens/FeedScreen';
 import { FinanceScreen } from './screens/FinanceScreen';
 import { LoginScreen } from './screens/LoginScreen';
+import { MembershipGateScreen } from './screens/MembershipGateScreen';
 import { OrbitScreen } from './screens/OrbitScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { SharingScreen } from './screens/SharingScreen';
-import { colors } from './theme';
 
 function AuthenticatedWorkspace() {
-  const { user, loading } = useAuth();
+  const { user, identity, accessState, loading } = useAuth();
   const [activeRoute, setActiveRoute] = useState<AppRoute>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const sharingTab = 'i_can' as const;
@@ -24,14 +24,16 @@ function AuthenticatedWorkspace() {
     }
   }, [user, activeRoute]);
 
-  if (loading && !user) {
-    return (
-      <View style={styles.boot}>
-        <Image source={require('../assets/emblem.png')} style={styles.mark} resizeMode="contain" />
-        <ActivityIndicator color={colors.primary} />
-        <Text style={styles.bootText}>Loading GCF Connect…</Text>
-      </View>
-    );
+  if (loading && !identity) {
+    return <GCFSplash caption="Loading" />;
+  }
+
+  if (!identity) {
+    return <LoginScreen />;
+  }
+
+  if (accessState === 'unknown' || accessState === 'pending' || accessState === 'rejected') {
+    return <MembershipGateScreen />;
   }
 
   if (!user) {
@@ -66,14 +68,10 @@ function AuthenticatedWorkspace() {
 
 export default function ConnectApp() {
   return (
-    <AuthProvider>
-      <AuthenticatedWorkspace />
-    </AuthProvider>
+    <GCFLoadingProvider>
+      <AuthProvider>
+        <AuthenticatedWorkspace />
+      </AuthProvider>
+    </GCFLoadingProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, gap: 12 },
-  mark: { width: 120, height: 120 },
-  bootText: { color: colors.onSurfaceVariant, fontWeight: '600' },
-});

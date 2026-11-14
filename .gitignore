@@ -1,6 +1,8 @@
 node_modules/
 build/
 dist/
+.expo/
+apps/mobile/.expo/
 coverage/
 .DS_Store
 *.log

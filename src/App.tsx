@@ -6,12 +6,14 @@ import { DashboardFeedPage } from './pages/DashboardFeedPage';
 import { EventsPage } from './pages/EventsPage';
 import { FinancePage } from './pages/FinancePage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { WaitingPage } from './pages/WaitingPage';
 import { OrbitPage } from './pages/OrbitPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SharingPage, type SharingTab } from './pages/SharingPage';
 
 function AuthenticatedWorkspace() {
-  const { user, loading } = useAuth();
+  const { user, identity, accessState, loading } = useAuth();
   const [activeRoute, setActiveRoute] = useState<AppRoute>('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [sharingTab, setSharingTab] = useState<SharingTab>('i_have');
@@ -23,12 +25,12 @@ function AuthenticatedWorkspace() {
     }
   }, [user, activeRoute]);
 
-  if (loading && !user) {
+  if (loading && !identity) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3">
           <img
-            src="/emblem.png"
+            src="/logo.jpeg"
             alt="Graduate Christian Fellowship"
             className="w-28 h-28 object-contain animate-pulse"
           />
@@ -36,6 +38,18 @@ function AuthenticatedWorkspace() {
         </div>
       </div>
     );
+  }
+
+  if (!identity) {
+    return <LoginPage />;
+  }
+
+  if (accessState === 'unknown') {
+    return <RegisterPage />;
+  }
+
+  if (accessState === 'pending' || accessState === 'rejected') {
+    return <WaitingPage />;
   }
 
   if (!user) {

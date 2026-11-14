@@ -94,3 +94,38 @@ export async function uploadFileToGoogleDrive(params: {
     driveViewerLink: uploaded.webViewLink || buildDriveViewerUrl(uploaded.id),
   };
 }
+
+export async function setDriveFileLinkSharing(params: {
+  accessToken: string;
+  driveFileId: string;
+  visibility: MediaVisibility;
+}): Promise<void> {
+  const fileId = encodeURIComponent(params.driveFileId);
+  if (params.visibility === 'anyone_with_link') {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+    });
+    if (!res.ok) throw new Error('Unable to share the Google Drive file.');
+    return;
+  }
+
+  const listRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    headers: { Authorization: `Bearer ${params.accessToken}` },
+  });
+  if (!listRes.ok) throw new Error('Unable to inspect Google Drive sharing.');
+  const listed = (await listRes.json()) as { permissions?: Array<{ id: string; type: string }> };
+  const anyone = listed.permissions?.filter((p) => p.type === 'anyone') ?? [];
+  await Promise.all(
+    anyone.map((p) =>
+      fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${encodeURIComponent(p.id)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${params.accessToken}` },
+      })
+    )
+  );
+}

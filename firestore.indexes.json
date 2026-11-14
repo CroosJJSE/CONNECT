@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "joinRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pointTransactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "memberId", "order": "ASCENDING" },
+        { "fieldPath": "activityType", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

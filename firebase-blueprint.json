@@ -14,10 +14,11 @@
         "bio": { "type": "string", "maxLength": 300 },
         "role": { "type": "string", "enum": ["member", "steward", "admin"] },
         "verified": { "type": "boolean" },
+        "membershipStatus": { "type": "string", "enum": ["pending", "active", "rejected"] },
         "joinedAt": { "type": "string", "format": "date-time" },
         "points": { "type": "integer" }
       },
-      "required": ["uid", "displayName", "initials", "role", "verified"]
+      "required": ["uid", "displayName", "initials", "role", "verified", "membershipStatus"]
     },
     "UserPrivateInfo": {
       "title": "UserPrivateInfo",
@@ -35,6 +36,22 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "preferredCurrency"]
+    },
+    "JoinRequest": {
+      "title": "JoinRequest",
+      "description": "Public membership application awaiting admin approval",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "locality": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "active", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "reviewedByUid": { "type": "string" }
+      },
+      "required": ["uid", "displayName", "email", "locality", "status"]
     },
     "Community": {
       "title": "Community",

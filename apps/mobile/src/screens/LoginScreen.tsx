@@ -9,14 +9,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@connect-core/hooks/useAuth';
+import { GCFLoader, GCFOverlay } from '../components/GCFLoader';
 import { BrandGlyph, GoogleGlyph, Icon } from '../components/Icon';
 import { Pressable } from '../components/Pressable';
 import { colors, spacing, type } from '../theme';
 
-const logo = require('../../assets/logo.jpeg');
-
 export function LoginScreen() {
-  const { signInWithGoogle, demoAccounts, loading, error } = useAuth();
+  const { signInWithGoogle, demoAccounts, loading, error, usesLiveFirebase } = useAuth();
   const [selectedUid, setSelectedUid] = useState('user-elena');
   const selected = demoAccounts.find((a) => a.uid === selectedUid);
 
@@ -32,7 +31,7 @@ export function LoginScreen() {
 
         <View style={styles.core}>
           <View style={styles.emblemWrap}>
-            <Image source={logo} style={styles.emblem} resizeMode="contain" />
+            <GCFLoader size={220} />
           </View>
 
           <Text style={styles.title}>GCF Connect</Text>
@@ -49,7 +48,7 @@ export function LoginScreen() {
 
           <Pressable
             disabled={loading}
-            onPress={() => void signInWithGoogle(selectedUid)}
+            onPress={() => void signInWithGoogle(usesLiveFirebase ? undefined : selectedUid)}
             style={({ pressed }) => [
               styles.googleBtn,
               pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] },
@@ -65,7 +64,7 @@ export function LoginScreen() {
             <Text style={styles.verifyText}>Access is available to verified GCF members.</Text>
           </View>
 
-          {demoAccounts.length > 0 ? (
+          {!usesLiveFirebase && demoAccounts.length > 0 ? (
             <View style={styles.preview}>
               <Text style={styles.previewLabel}>
                 Preview as {selected?.displayName ?? 'member'}
@@ -126,6 +125,7 @@ export function LoginScreen() {
           </View>
         </View>
       </ScrollView>
+      {loading ? <GCFOverlay /> : null}
     </SafeAreaView>
   );
 }
@@ -152,13 +152,10 @@ const styles = StyleSheet.create({
   badgeText: { ...type.labelSm, color: colors.secondary },
   core: { alignItems: 'center', width: '100%', maxWidth: 400, alignSelf: 'center' },
   emblemWrap: {
-    width: '100%',
-    aspectRatio: 342 / 393,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  emblem: { width: '100%', height: '100%' },
   title: { ...type.headlineLg, letterSpacing: -0.4, marginBottom: spacing.xs },
   subtitle: { ...type.bodyMd, color: colors.onSurfaceVariant, fontWeight: '500', textAlign: 'center', marginBottom: spacing.lg },
   purpose: {

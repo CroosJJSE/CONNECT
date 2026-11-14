@@ -1,8 +1,9 @@
 import { useEffect, useState, type ComponentType } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { hydratePlatformStorage } from '@connect-core/services/platform/platformStorage';
+import { GCFSplash } from './src/components/GCFLoader';
 import { colors } from './src/theme';
 
 export default function App() {
@@ -37,17 +38,13 @@ export default function App() {
       ) : ReadyApp ? (
         <ReadyApp />
       ) : (
-        <View style={styles.boot}>
-          <ActivityIndicator color={colors.primary} />
-          <Text style={styles.bootText}>Starting GCF Connect…</Text>
-        </View>
+        <GCFSplash caption="Starting" />
       )}
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, gap: 12, padding: 24 },
-  bootText: { color: colors.onSurfaceVariant, fontWeight: '600' },
+  boot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, padding: 24 },
   error: { color: colors.onErrorContainer, textAlign: 'center' },
 });

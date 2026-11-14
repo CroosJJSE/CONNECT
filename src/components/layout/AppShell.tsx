@@ -112,7 +112,7 @@ export function AppShell({
           >
             {!logoFailed ? (
               <img
-                src="/emblem.png"
+                src="/logo.jpeg"
                 alt="CONNECT logo"
                 onError={() => setLogoFailed(true)}
                 className="w-11 h-11 rounded-lg object-contain bg-surface-container-lowest shrink-0"
@@ -194,7 +194,7 @@ export function AppShell({
               onClick={() => onNavigate('home')}
               className="w-11 h-11 rounded-lg bg-surface-container-lowest flex items-center justify-center shadow-xs shrink-0 overflow-hidden"
             >
-              <img src="/emblem.png" alt="" className="w-11 h-11 object-contain" />
+              <img src="/logo.jpeg" alt="" className="w-11 h-11 object-contain" />
             </button>
             <h1 className="text-base font-semibold text-on-surface tracking-tight truncate">
               {ROUTE_TITLES[activeRoute]}

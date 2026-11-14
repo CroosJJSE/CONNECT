@@ -24,7 +24,8 @@ export function DriveMediaCard({
 }: DriveMediaCardProps) {
   const [previewError, setPreviewError] = useState(false);
 
-  const previewUrl = inlineImageUrl ?? media?.inlinePreviewUrl;
+  const isCloudinary = media?.storageProvider === 'cloudinary';
+  const previewUrl = inlineImageUrl ?? media?.inlinePreviewUrl ?? (isCloudinary ? media?.driveViewerLink : undefined);
   const altText = inlineAlt ?? media?.fileName ?? 'Community media attachment';
   const isImage = (media?.mimeType.startsWith('image/') ?? mediaType === 'image') && Boolean(previewUrl);
 
@@ -57,8 +58,14 @@ export function DriveMediaCard({
             </p>
             <p className="text-xs text-on-surface-variant">
               {media
-                ? `${formatFileSize(media.fileSize)} · Stored in owner's Google Drive (${media.folderName})`
-                : 'Google Drive attachment'}
+                ? `${formatFileSize(media.fileSize)} · ${
+                    isCloudinary
+                      ? 'Stored on CONNECT Cloudinary'
+                      : `Stored in owner's Google Drive (${media.folderName})`
+                  }`
+                : isCloudinary
+                  ? 'Community media'
+                  : 'Google Drive attachment'}
             </p>
           </div>
         </div>
@@ -67,10 +74,12 @@ export function DriveMediaCard({
       {media && (
         <div className="px-3.5 py-2 bg-surface-container flex items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-1.5 text-on-surface-variant min-w-0">
-            {media.visibility === 'anyone_with_link' ? (
+            {isCloudinary || media.visibility === 'anyone_with_link' ? (
               <>
                 <Globe className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="truncate">Shared · Anyone with link can view</span>
+                <span className="truncate">
+                  {isCloudinary ? 'Hosted community media' : 'Shared · Anyone with link can view'}
+                </span>
               </>
             ) : (
               <>
@@ -85,7 +94,7 @@ export function DriveMediaCard({
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-primary font-semibold hover:underline whitespace-nowrap shrink-0"
           >
-            <span>Open in Drive</span>
+            <span>{isCloudinary ? 'Open media' : 'Open in Drive'}</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>

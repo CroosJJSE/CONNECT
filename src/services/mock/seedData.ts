@@ -671,7 +671,7 @@ export const SEED_EVENT_RSVP_LOGS: EventRsvpLog[] = [
   },
 ];
 
-type SeedUserBase = Omit<UserProfile, 'points'>;
+type SeedUserBase = Omit<UserProfile, 'points' | 'membershipStatus'>;
 
 const RAW_SEED_USERS: SeedUserBase[] = [
   {
@@ -842,6 +842,7 @@ const RAW_SEED_USERS: SeedUserBase[] = [
 
 export const SEED_USERS: UserProfile[] = RAW_SEED_USERS.map((base) => ({
   ...base,
+  membershipStatus: 'active' as const,
   points: reconcilePointsFromLedger(base.uid, SEED_POINT_TRANSACTIONS),
 }));
 

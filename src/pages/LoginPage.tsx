@@ -23,7 +23,7 @@ export function LoginPage() {
         {/* Brand Emblem with Ambient Glow */}
         <div className="relative flex items-center justify-center mb-6">
           <div className="absolute -inset-3 bg-secondary-fixed/40 rounded-full blur-xl pointer-events-none" />
-          <div className="relative w-full max-w-[340px] aspect-[342/393] flex items-center justify-center">
+          <div className="relative w-full max-w-[340px] aspect-square flex items-center justify-center">
             {!emblemFailed ? (
               <img
                 src="/logo.jpeg"
@@ -149,7 +149,7 @@ export function LoginPage() {
         {infoSheet === 'privacy' && (
           <div className="space-y-3 text-sm text-on-surface-variant">
             <p>
-              CONNECT stores personal finance records privately per owner, protects My Orbit and Private posts with server rules, and saves uploaded media inside your own Google Drive folder rather than third-party storage.
+              CONNECT stores personal finance records privately per owner, keeps My Orbit and Private media in your Google Drive, and stores sharing and community media on CONNECT’s Cloudinary account.
             </p>
           </div>
         )}

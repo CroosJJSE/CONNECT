@@ -45,6 +45,7 @@ import type {
   UploadDriveMediaInput,
 } from '../services/interfaces';
 import { services } from '../services/serviceContainer';
+import { listUserNotifications, markUserNotificationsRead } from '../services/firebase/userNotifications';
 import { useAuth } from './useAuth';
 
 export interface PointFeedback {
@@ -136,6 +137,7 @@ interface ConnectDataContextValue {
   authorizeDrive: () => Promise<void>;
   revokeDrive: () => Promise<void>;
   uploadDriveMedia: (input: Omit<UploadDriveMediaInput, 'ownerUserId'>) => Promise<DriveMediaMetadata | null>;
+  uploadHostedMedia: (input: Omit<UploadDriveMediaInput, 'ownerUserId'>) => Promise<DriveMediaMetadata | null>;
   updateDriveMediaVisibility: (mediaId: string, visibility: MediaVisibility) => Promise<void>;
   setCalendarReminderMinutes: (minutes: number) => Promise<void>;
   votePoll: (pollId: string, optionId: string) => Promise<void>;
@@ -192,6 +194,13 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     setActionBanner({ type: 'error', message });
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    const mock = await services.community.getNotifications();
+    if (!services.auth.usesLiveFirebase() || !user) return mock;
+    const live = await listUserNotifications(user.uid);
+    return [...live, ...mock];
+  }, [user]);
+
   const syncPointsSnapshot = useCallback(
     async (
       prevLatestTxId?: string,
@@ -203,7 +212,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         services.community.getDirectoryMembers(),
         services.points.getMemberTransactions(user.uid),
         services.points.getEventRsvpLogs(user),
-        services.community.getNotifications(),
+        loadNotifications(),
         services.points.getConfiguration(),
       ]);
       setDirectoryMembers(members);
@@ -265,7 +274,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
 
       return null;
     },
-    [user, refreshUser]
+    [user, refreshUser, loadNotifications]
   );
 
   const refreshAll = useCallback(
@@ -304,7 +313,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
           services.community.getAnnouncements(),
           services.community.getPolls(),
           services.community.getInterestGroups(),
-          services.community.getNotifications(),
+          loadNotifications(),
           services.orbit.getOrbitConnections(user.uid),
           services.orbit.getOrbitMembersByOwnerMap(),
           services.memories.listMemories(user.uid),
@@ -361,7 +370,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [user, notifyError]
+    [user, notifyError, loadNotifications]
   );
 
   useEffect(() => {
@@ -443,7 +452,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         const mentionCount =
           latestComment?.mentionedUserIds?.filter((id) => id !== user.uid).length ?? 0;
         if (mentionCount > 0 && updated.audienceType !== 'private') {
-          setNotifications(await services.community.getNotifications());
+          setNotifications(await loadNotifications());
           notifySuccess(
             `Comment posted · Mentioned ${mentionCount} neighbor${mentionCount === 1 ? '' : 's'}.`
           );
@@ -452,7 +461,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         notifyError(err instanceof Error ? err.message : 'Failed to post comment.');
       }
     },
-    [user, notifySuccess, notifyError]
+    [user, loadNotifications, notifySuccess, notifyError]
   );
 
   const deletePost = useCallback(
@@ -866,7 +875,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         const mentionCount =
           latestComment?.mentionedUserIds?.filter((id) => id !== user.uid).length ?? 0;
         if (mentionCount > 0) {
-          setNotifications(await services.community.getNotifications());
+          setNotifications(await loadNotifications());
           notifySuccess(
             `Message sent · Mentioned ${mentionCount} neighbor${mentionCount === 1 ? '' : 's'}.`
           );
@@ -985,6 +994,25 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
     [user, refreshUser, notifySuccess, notifyError]
   );
 
+  const uploadHostedMedia = useCallback(
+    async (input: Omit<UploadDriveMediaInput, 'ownerUserId'>): Promise<DriveMediaMetadata | null> => {
+      if (!user) return null;
+      try {
+        const record = await services.media.uploadHostedMedia({
+          ...input,
+          ownerUserId: user.uid,
+        });
+        setDriveMedia(await services.media.listUserMedia(user.uid));
+        notifySuccess(`Saved "${record.fileName}" to community media storage.`);
+        return record;
+      } catch (err) {
+        notifyError(err instanceof Error ? err.message : 'Media upload failed.');
+        return null;
+      }
+    },
+    [user, notifySuccess, notifyError]
+  );
+
   const updateDriveMediaVisibility = useCallback(
     async (mediaId: string, visibility: MediaVisibility) => {
       if (!user) return;
@@ -1027,9 +1055,11 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
   );
 
   const markNotificationsRead = useCallback(async () => {
-    const updated = await services.community.markAllNotificationsRead();
-    setNotifications(updated);
-  }, []);
+    if (services.auth.usesLiveFirebase() && user) {
+      await markUserNotificationsRead(user.uid);
+    }
+    setNotifications(await loadNotifications());
+  }, [user, loadNotifications]);
 
   const updatePointsConfig = useCallback(
     async (config: PointsConfiguration) => {
@@ -1154,6 +1184,7 @@ export function ConnectDataProvider({ children }: { children: ReactNode }) {
         authorizeDrive,
         revokeDrive,
         uploadDriveMedia,
+        uploadHostedMedia,
         updateDriveMediaVisibility,
         setCalendarReminderMinutes,
         votePoll,

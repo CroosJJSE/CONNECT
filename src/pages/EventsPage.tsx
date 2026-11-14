@@ -776,6 +776,7 @@ export function EventsPage({ searchQuery }: { searchQuery: string }) {
           <DriveUploadField
             selectedMedia={eventDriveMedia}
             onSelectMedia={setEventDriveMedia}
+            storage="cloudinary"
           />
           {formError && <p className="text-xs font-medium text-error">{formError}</p>}
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">

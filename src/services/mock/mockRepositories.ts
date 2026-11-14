@@ -46,7 +46,10 @@ import type {
   SharingRequest,
   SkillOffer,
   UserProfile,
+  JoinRequest,
+  AuthSession,
 } from '../../domain/models';
+import { CONNECT_CLOUDINARY_FOLDER, uploadFileToCloudinary } from '../google/cloudinaryUpload';
 import { buildDriveViewerUrl, CONNECT_DRIVE_FOLDER_NAME } from '../google/googleDriveService';
 import { generateIcsContent } from '../google/googleCalendarService';
 import { workspaceTokenStore } from '../google/workspaceTokenStore';
@@ -126,6 +129,7 @@ interface PersistedMockState {
   driveAuthorized: boolean;
   calendarAuthorized: boolean;
   calendarReminderMinutes: number;
+  joinRequests: JoinRequest[];
 }
 
 function createInitialState(): PersistedMockState {
@@ -155,6 +159,7 @@ function createInitialState(): PersistedMockState {
     driveAuthorized: false,
     calendarAuthorized: false,
     calendarReminderMinutes: 60,
+    joinRequests: [],
   };
 }
 
@@ -201,6 +206,7 @@ class InMemoryStateStore {
           const reconciledPoints = reconcilePointsFromLedger(u.uid, pointTransactions);
           return {
             ...rest,
+            membershipStatus: u.membershipStatus ?? 'active',
             financeEnabled: Boolean(u.financeEnabled),
             points:
               typeof legacy.points === 'number'
@@ -238,6 +244,7 @@ class InMemoryStateStore {
           memoryComments: Array.isArray(parsed.memoryComments)
             ? parsed.memoryComments
             : defaults.memoryComments,
+          joinRequests: Array.isArray(parsed.joinRequests) ? parsed.joinRequests : defaults.joinRequests,
         };
         return this.state;
       } catch {
@@ -520,29 +527,124 @@ function processEventRsvpLedgerChange(
   s.eventRsvpLogs = [rsvpLog, ...s.eventRsvpLogs];
 }
 
+function toMockSession(user: UserProfile | undefined | null): AuthSession | null {
+  if (!user) return null;
+  const membershipStatus = user.membershipStatus ?? 'active';
+  const isAdmin = user.role === 'admin';
+  return {
+    identity: {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    },
+    profile: { ...user, membershipStatus },
+    accessState: isAdmin ? 'active' : membershipStatus,
+    isAdmin,
+  };
+}
+
 export class MockAuthService implements IAuthService {
+  usesLiveFirebase(): boolean {
+    return false;
+  }
+
+  subscribeSession(listener: (session: AuthSession | null) => void): () => void {
+    void this.getSession().then(listener);
+    return () => undefined;
+  }
+
+  async getSession(): Promise<AuthSession | null> {
+    const s = store.get();
+    if (!s.currentUserId) return null;
+    return toMockSession(s.users.find((u) => u.uid === s.currentUserId));
+  }
+
   async getDemoAccounts(): Promise<UserProfile[]> {
     return store.get().users.slice(0, 3);
   }
 
   async getCurrentUser(): Promise<UserProfile | null> {
-    const s = store.get();
-    if (!s.currentUserId) return null;
-    return s.users.find((u) => u.uid === s.currentUserId) ?? null;
+    const session = await this.getSession();
+    if (!session || session.accessState !== 'active') return null;
+    return session.profile;
   }
 
-  async signInWithGoogle(preferredUid: string = 'user-elena'): Promise<UserProfile> {
+  async signInWithGoogle(preferredUid: string = 'user-elena'): Promise<AuthSession> {
     const s = store.get();
     const found = s.users.find((u) => u.uid === preferredUid) ?? s.users[0];
     s.currentUserId = found.uid;
     store.save();
-    return found;
+    const session = toMockSession(found);
+    if (!session) throw new Error('Unable to sign in.');
+    return session;
   }
 
   async signOut(): Promise<void> {
     const s = store.get();
     s.currentUserId = null;
     workspaceTokenStore.clearAll();
+    store.save();
+  }
+
+  async submitJoinRequest(input: { displayName: string; locality: string }): Promise<AuthSession> {
+    const s = store.get();
+    if (!s.currentUserId) throw new Error('Sign in first.');
+    const idx = s.users.findIndex((u) => u.uid === s.currentUserId);
+    if (idx === -1) throw new Error('User profile not found.');
+    const existing = s.users[idx];
+    const updated: UserProfile = {
+      ...existing,
+      displayName: input.displayName.trim() || existing.displayName,
+      initials: deriveInitials(input.displayName.trim() || existing.displayName),
+      clusterName: input.locality.trim(),
+      membershipStatus: 'pending',
+      verified: false,
+      role: 'member',
+    };
+    s.users[idx] = updated;
+    s.joinRequests = [
+      {
+        uid: updated.uid,
+        displayName: updated.displayName,
+        email: updated.email,
+        locality: updated.clusterName,
+        status: 'pending',
+        createdAtIso: new Date().toISOString(),
+      },
+      ...(s.joinRequests ?? []).filter((r) => r.uid !== updated.uid),
+    ];
+    store.save();
+    const session = toMockSession(updated);
+    if (!session) throw new Error('Unable to submit application.');
+    return session;
+  }
+
+  async listJoinRequests(): Promise<JoinRequest[]> {
+    return [...(store.get().joinRequests ?? [])].filter((r) => r.status === 'pending');
+  }
+
+  async approveJoinRequest(uid: string): Promise<void> {
+    const s = store.get();
+    const idx = s.users.findIndex((u) => u.uid === uid);
+    if (idx !== -1) {
+      s.users[idx] = { ...s.users[idx], membershipStatus: 'active', verified: true };
+    }
+    s.joinRequests = (s.joinRequests ?? []).map((r) =>
+      r.uid === uid ? { ...r, status: 'active' as const, reviewedAtIso: new Date().toISOString() } : r
+    );
+    store.save();
+  }
+
+  async rejectJoinRequest(uid: string): Promise<void> {
+    const s = store.get();
+    const idx = s.users.findIndex((u) => u.uid === uid);
+    if (idx !== -1) {
+      s.users[idx] = { ...s.users[idx], membershipStatus: 'rejected', verified: false };
+    }
+    s.joinRequests = (s.joinRequests ?? []).map((r) =>
+      r.uid === uid ? { ...r, status: 'rejected' as const, reviewedAtIso: new Date().toISOString() } : r
+    );
     store.save();
   }
 
@@ -1571,10 +1673,57 @@ export class MockDriveMediaService implements IMediaStorageService {
       inlinePreviewUrl: input.previewDataUrl,
       folderName: CONNECT_DRIVE_FOLDER_NAME,
       createdAtIso: new Date().toISOString(),
+      storageProvider: 'google_drive',
     };
     const s = store.get();
     s.driveMedia = [record, ...s.driveMedia];
     s.driveAuthorized = true;
+    store.save();
+    return record;
+  }
+
+  async uploadHostedMedia(input: UploadDriveMediaInput): Promise<DriveMediaMetadata> {
+    if (input.file) {
+      try {
+        const uploaded = await uploadFileToCloudinary(input.file);
+        const record: DriveMediaMetadata = {
+          id: nextId('media'),
+          driveFileId: uploaded.publicId,
+          ownerUserId: input.ownerUserId,
+          fileName: input.fileName,
+          mimeType: input.mimeType,
+          fileSize: input.fileSize,
+          visibility: 'anyone_with_link',
+          driveViewerLink: uploaded.secureUrl,
+          inlinePreviewUrl: uploaded.secureUrl,
+          folderName: CONNECT_CLOUDINARY_FOLDER,
+          createdAtIso: new Date().toISOString(),
+          storageProvider: 'cloudinary',
+        };
+        const s = store.get();
+        s.driveMedia = [record, ...s.driveMedia];
+        store.save();
+        return record;
+      } catch {
+        // Fall through to local preview when host Cloudinary env is unset.
+      }
+    }
+    const record: DriveMediaMetadata = {
+      id: nextId('media'),
+      driveFileId: `cld_${Math.random().toString(36).slice(2, 12)}`,
+      ownerUserId: input.ownerUserId,
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      fileSize: input.fileSize,
+      visibility: 'anyone_with_link',
+      driveViewerLink: input.previewDataUrl ?? '',
+      inlinePreviewUrl: input.previewDataUrl,
+      folderName: 'connect/community',
+      createdAtIso: new Date().toISOString(),
+      storageProvider: 'cloudinary',
+    };
+    const s = store.get();
+    s.driveMedia = [record, ...s.driveMedia];
     store.save();
     return record;
   }

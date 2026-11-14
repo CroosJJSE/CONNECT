@@ -1,4 +1,4 @@
-import type { CurrencyCode, MemberRole } from './common';
+import type { AccessState, CurrencyCode, MemberRole, MembershipStatus } from './common';
 
 export interface UserProfile {
   uid: string;
@@ -11,6 +11,7 @@ export interface UserProfile {
   bio: string;
   role: MemberRole;
   verified: boolean;
+  membershipStatus: MembershipStatus;
   joinedAtIso: string;
   communityIds: string[];
   preferredCurrency: CurrencyCode;
@@ -71,4 +72,29 @@ export interface NotificationItem {
   createdAtIso: string;
   read: boolean;
   route: 'home' | 'sharing' | 'orbit' | 'events' | 'finance' | 'profile';
+}
+
+export interface JoinRequest {
+  uid: string;
+  displayName: string;
+  email: string;
+  locality: string;
+  status: MembershipStatus;
+  createdAtIso: string;
+  reviewedAtIso?: string;
+  reviewedByUid?: string;
+}
+
+export interface AuthIdentity {
+  uid: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
+}
+
+export interface AuthSession {
+  identity: AuthIdentity;
+  profile: UserProfile | null;
+  accessState: AccessState;
+  isAdmin: boolean;
 }

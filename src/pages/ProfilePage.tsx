@@ -25,6 +25,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { DriveMediaCard } from '../components/common/DriveMediaCard';
 import { DriveUploadField } from '../components/common/DriveUploadField';
 import { ModalSheet } from '../components/common/ModalSheet';
+import { AdminApprovalsConsole } from '../components/profile/AdminApprovalsConsole';
 import { AdminPointsConsole } from '../components/profile/AdminPointsConsole';
 import { MemberPointsSection } from '../components/profile/MemberPointsSection';
 
@@ -39,10 +40,11 @@ type ProfileSheet =
   | 'pact'
   | 'support'
   | 'admin_points'
+  | 'admin_approvals'
   | null;
 
 export function ProfilePage() {
-  const { user, updateProfile, signOut } = useAuth();
+  const { user, isAdmin, updateProfile, signOut } = useAuth();
   const {
     sharingItems,
     sharingRequests,
@@ -167,7 +169,27 @@ export function ProfilePage() {
         </span>
 
         <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden divide-y divide-outline-variant/20">
-          {user.role === 'admin' && (
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveSheet('admin_approvals')}
+              className="w-full text-left flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-primary shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-on-surface">Membership approvals</p>
+                  <p className="text-xs text-on-surface-variant truncate">
+                    Review pending join requests
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-outline shrink-0" />
+            </button>
+          )}
+          {isAdmin && (
             <button
               type="button"
               onClick={() => setActiveSheet('admin_points')}
@@ -266,7 +288,7 @@ export function ProfilePage() {
                 <p className="text-xs text-on-surface-variant truncate">
                   {driveAuthorized
                     ? `Connected · ${driveMedia.length} file(s) in Google Drive`
-                    : 'Connect with Google Drive to upload photos & videos'}
+                    : 'My Orbit photos stay in your Google Drive'}
                 </p>
               </div>
             </div>
@@ -528,7 +550,7 @@ export function ProfilePage() {
       <ModalSheet
         open={activeSheet === 'drive_vault'}
         title="Google Drive Media"
-        subtitle="Your uploaded photos and videos stay inside your personal Google Drive"
+        subtitle="My Orbit and private photos stay inside your personal Google Drive"
         onClose={() => setActiveSheet(null)}
       >
         <div className="flex flex-col gap-4">
@@ -772,7 +794,18 @@ export function ProfilePage() {
         </div>
       </ModalSheet>
 
-      {user.role === 'admin' && (
+      {isAdmin && (
+        <ModalSheet
+          open={activeSheet === 'admin_approvals'}
+          title="Membership approvals"
+          subtitle="Approve or decline people who applied on the website"
+          onClose={() => setActiveSheet(null)}
+        >
+          <AdminApprovalsConsole />
+        </ModalSheet>
+      )}
+
+      {isAdmin && (
         <ModalSheet
           open={activeSheet === 'admin_points'}
           title="Admin Points & Levels Console"

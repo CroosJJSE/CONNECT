@@ -434,6 +434,7 @@ export function DashboardFeedPage({
                       type="button"
                       onClick={() => {
                         setAudienceType('communities');
+                        setAttachedDriveMedia(null);
                         if (selectedCommunityIds.length === 0 && userCommunities.length > 0) {
                           setSelectedCommunityIds([userCommunities[0].id]);
                         }
@@ -452,6 +453,7 @@ export function DashboardFeedPage({
                       type="button"
                       onClick={() => {
                         setAudienceType('orbit');
+                        setAttachedDriveMedia(null);
                         if (composerError) setComposerError(null);
                       }}
                       className={`min-h-[44px] px-1.5 sm:px-2 rounded-lg text-[11px] sm:text-xs font-medium flex items-center justify-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap ${
@@ -467,6 +469,7 @@ export function DashboardFeedPage({
                       type="button"
                       onClick={() => {
                         setAudienceType('private');
+                        setAttachedDriveMedia(null);
                         if (composerError) setComposerError(null);
                       }}
                       className={`min-h-[44px] px-1.5 sm:px-2 rounded-lg text-[11px] sm:text-xs font-medium flex items-center justify-center gap-1 sm:gap-1.5 transition-colors whitespace-nowrap ${
@@ -519,8 +522,10 @@ export function DashboardFeedPage({
                 </div>
 
                 <DriveUploadField
+                  key={audienceType}
                   selectedMedia={attachedDriveMedia}
                   onSelectMedia={setAttachedDriveMedia}
+                  storage={audienceType === 'communities' ? 'cloudinary' : 'drive'}
                   defaultVisibility={audienceType === 'private' ? 'private' : 'anyone_with_link'}
                 />
 

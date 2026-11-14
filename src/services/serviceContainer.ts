@@ -12,6 +12,10 @@ import type {
   ISharingRepository,
   ISmsIngestionBridge,
 } from './interfaces';
+import { FirebaseAuthService } from './firebase/firebaseAuthService';
+import { FirebaseCalendarService } from './firebase/calendarConnectService';
+import { FirebaseDriveMediaService } from './firebase/driveMediaService';
+import { isFirebaseConfigured } from './firebase/firebaseConfig';
 import {
   MockAuthService,
   MockCalendarService,
@@ -43,7 +47,7 @@ export interface ServiceRegistry {
 }
 
 export const services: ServiceRegistry = {
-  auth: new MockAuthService(),
+  auth: isFirebaseConfigured() ? new FirebaseAuthService() : new MockAuthService(),
   community: new MockCommunityRepository(),
   orbit: new MockOrbitRepository(),
   memories: new MockMemoryRepository(),
@@ -51,8 +55,8 @@ export const services: ServiceRegistry = {
   sharing: new MockSharingRepository(),
   events: new MockEventRepository(),
   finance: new MockFinanceRepository(),
-  media: new MockDriveMediaService(),
-  calendar: new MockCalendarService(),
+  media: isFirebaseConfigured() ? new FirebaseDriveMediaService() : new MockDriveMediaService(),
+  calendar: isFirebaseConfigured() ? new FirebaseCalendarService() : new MockCalendarService(),
   smsBridge: new WebNoopSmsIngestionBridge(),
   points: new MockPointsRepository(),
 };

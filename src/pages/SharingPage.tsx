@@ -812,6 +812,7 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
               <DriveUploadField
                 selectedMedia={itemDriveMedia}
                 onSelectMedia={setItemDriveMedia}
+                storage="cloudinary"
               />
             </>
           )}
@@ -842,6 +843,7 @@ export function SharingPage({ initialTab, openCreateSignal, searchQuery }: Shari
               <DriveUploadField
                 selectedMedia={reqDriveMedia}
                 onSelectMedia={setReqDriveMedia}
+                storage="cloudinary"
               />
             </>
           )}

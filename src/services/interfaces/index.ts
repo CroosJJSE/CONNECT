@@ -32,14 +32,23 @@ import type {
   TransactionCategory,
   TransactionType,
   UserProfile,
+  JoinRequest,
+  AuthSession,
 } from '../../domain/models';
 
 export interface IAuthService {
+  usesLiveFirebase(): boolean;
+  subscribeSession(listener: (session: AuthSession | null) => void): () => void;
+  getSession(): Promise<AuthSession | null>;
   getCurrentUser(): Promise<UserProfile | null>;
-  signInWithGoogle(preferredUid?: string): Promise<UserProfile>;
+  signInWithGoogle(preferredUid?: string): Promise<AuthSession>;
   signOut(): Promise<void>;
   updateProfile(uid: string, patch: Partial<Pick<UserProfile, 'displayName' | 'clusterName' | 'unitLabel' | 'bio' | 'preferredCurrency' | 'phoneVisibleToHousemates' | 'financeEnabled'>>): Promise<UserProfile>;
   getDemoAccounts(): Promise<UserProfile[]>;
+  submitJoinRequest(input: { displayName: string; locality: string }): Promise<AuthSession>;
+  listJoinRequests(): Promise<JoinRequest[]>;
+  approveJoinRequest(uid: string): Promise<void>;
+  rejectJoinRequest(uid: string): Promise<void>;
 }
 
 export interface ICommunityRepository {
@@ -198,6 +207,7 @@ export interface UploadDriveMediaInput {
   fileSize: number;
   visibility: MediaVisibility;
   previewDataUrl?: string;
+  file?: File;
 }
 
 export interface IMediaStorageService {
@@ -206,6 +216,7 @@ export interface IMediaStorageService {
   revokeDriveAccess(): Promise<void>;
   listUserMedia(ownerUserId: string): Promise<DriveMediaMetadata[]>;
   uploadMediaToAppFolder(input: UploadDriveMediaInput): Promise<DriveMediaMetadata>;
+  uploadHostedMedia(input: UploadDriveMediaInput): Promise<DriveMediaMetadata>;
   updateMediaVisibility(mediaId: string, ownerUserId: string, visibility: MediaVisibility): Promise<DriveMediaMetadata>;
   getMediaById(mediaId: string): Promise<DriveMediaMetadata | undefined>;
 }

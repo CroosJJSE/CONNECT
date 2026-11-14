@@ -17,14 +17,17 @@ interface DriveUploadFieldProps {
   selectedMedia: DriveMediaMetadata | null;
   onSelectMedia: (media: DriveMediaMetadata | null) => void;
   defaultVisibility?: MediaVisibility;
+  storage?: 'drive' | 'cloudinary';
 }
 
 export function DriveUploadField({
   selectedMedia,
   onSelectMedia,
   defaultVisibility = 'anyone_with_link',
+  storage = 'drive',
 }: DriveUploadFieldProps) {
-  const { driveAuthorized, authorizeDrive, uploadDriveMedia } = useConnectData();
+  const { driveAuthorized, authorizeDrive, uploadDriveMedia, uploadHostedMedia } = useConnectData();
+  const useHostedCloudinary = storage === 'cloudinary';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [visibility, setVisibility] = useState<MediaVisibility>(defaultVisibility);
   const [connecting, setConnecting] = useState(false);
@@ -71,12 +74,13 @@ export function DriveUploadField({
           reader.readAsDataURL(file);
         });
       }
-      const record = await uploadDriveMedia({
+      const record = await (useHostedCloudinary ? uploadHostedMedia : uploadDriveMedia)({
         fileName: file.name,
         mimeType: file.type || 'application/octet-stream',
         fileSize: file.size,
-        visibility,
+        visibility: useHostedCloudinary ? 'anyone_with_link' : visibility,
         previewDataUrl,
+        file,
       });
       if (record) {
         onSelectMedia(record);
@@ -105,7 +109,7 @@ export function DriveUploadField({
     await processFile(file);
   };
 
-  if (!driveAuthorized) {
+  if (!useHostedCloudinary && !driveAuthorized) {
     return (
       <div className="bg-surface-container-low rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3">
         <div className="flex items-start gap-3">
@@ -213,13 +217,22 @@ export function DriveUploadField({
         </span>
         <span className="text-xs text-on-surface-variant">
           {uploading
-            ? 'Saving directly to your Google Drive'
-            : 'Tap to choose media · Saved in your Drive'}
+            ? useHostedCloudinary
+              ? 'Saving to community media storage'
+              : 'Saving directly to your Google Drive'
+            : useHostedCloudinary
+              ? 'Tap to choose media · Stored on CONNECT Cloudinary'
+              : 'Tap to choose media · Saved in your Drive'}
         </span>
       </button>
 
       {uploadError && <p className="text-xs font-medium text-error">{uploadError}</p>}
 
+      {useHostedCloudinary ? (
+        <p className="text-[11px] text-on-surface-variant px-0.5 leading-snug">
+          Community and sharing media is stored on CONNECT’s Cloudinary account. No extra setup.
+        </p>
+      ) : (
       <div className="flex flex-col gap-1.5">
         <div className="grid grid-cols-2 gap-1 bg-surface-container p-1 rounded-xl">
           <button
@@ -254,6 +267,7 @@ export function DriveUploadField({
             : 'Private in your Google Drive — visible only to you.'}
         </p>
       </div>
+      )}
     </div>
   );
 }

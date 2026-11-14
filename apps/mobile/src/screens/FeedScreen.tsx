@@ -74,10 +74,6 @@ export function FeedScreen({ searchQuery }: { searchQuery: string }) {
 
   return (
     <ScrollView contentContainerStyle={styles.list}>
-      <View style={styles.verified}>
-        <View style={styles.dot} />
-        <Text style={styles.verifiedText}>Verified Members Only • Purely Chronological</Text>
-      </View>
       <Text style={styles.hero}>Community Feed</Text>
       <Text style={styles.lead}>Stay connected with what's happening across our GCF community.</Text>
 
@@ -246,18 +242,6 @@ export function FeedScreen({ searchQuery }: { searchQuery: string }) {
 
 const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.margin, paddingTop: spacing.md, paddingBottom: 40, gap: 12 },
-  verified: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.secondaryFixed,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
-  verifiedText: { ...type.labelSm, color: colors.onSecondaryFixed },
   hero: { ...type.headlineLg, letterSpacing: -0.4 },
   lead: { ...type.bodyMd, color: colors.onSurfaceVariant, marginTop: -4 },
   composerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
